@@ -5,8 +5,10 @@ const API = axios.create({
 });
 
 API.interceptors.request.use((req) => {
-  const token = localStorage.getItem('token'); // 'chat-token' এর পরিবর্তে শুধু 'token' দিন
-  if (token) {
+  // আপনার লোকাল স্টোরেজে থাকা সঠিক কি 'token' থেকে টোকেন নেওয়া হলো
+  const token = localStorage.getItem('token'); 
+
+  if (token && token !== 'undefined') {
     req.headers.authorization = `Bearer ${token}`;
   }
   return req;
