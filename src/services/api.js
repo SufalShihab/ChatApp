@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL:import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api', // আপনার ব্যাকএন্ডের বেস ইউআরএল
 });
 
 API.interceptors.request.use((req) => {
