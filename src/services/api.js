@@ -5,13 +5,11 @@ const API = axios.create({
 });
 
 API.interceptors.request.use((req) => {
-  // আপনার লোকাল স্টোরেজে থাকা সঠিক কি 'token' থেকে টোকেন নেওয়া হলো
-  const token = localStorage.getItem('token'); 
-
+  const token = localStorage.getItem('token');
+  // console.log("Interceptor Token:", token); // টোকেন ঠিকমতো পাওয়া যাচ্ছে কিনা দেখার জন্য
   if (token && token !== 'undefined') {
     req.headers.authorization = `Bearer ${token}`;
   }
   return req;
 });
-
 export default API;

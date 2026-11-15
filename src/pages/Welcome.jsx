@@ -5,10 +5,10 @@ export default function Welcome() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 px-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#0B132B] px-4">
       {/* App Logo & Title */}
       <div className="flex flex-col items-center text-center max-w-md">
-        <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg mb-6">
+        <div className="w-20 h-20 bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30 mb-6">
           <svg 
             className="w-12 h-12 text-white" 
             fill="currentColor" 
@@ -18,10 +18,10 @@ export default function Welcome() {
           </svg>
         </div>
 
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">
+        <h1 className="text-3xl font-extrabold text-white tracking-tight mb-2">
           Connect with your World
         </h1>
-        <p className="text-gray-500 mb-8 leading-relaxed">
+        <p className="text-cyan-300/80 mb-8 leading-relaxed">
           The fast, secure, and modern way to stay in touch with your friends and community.
         </p>
 
@@ -29,14 +29,14 @@ export default function Welcome() {
         <div className="w-full space-y-3">
           <button
             onClick={() => navigate('/register')}
-            className="w-full py-3.5 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition duration-200"
+            className="w-full py-3.5 bg-gradient-to-r from-[#0084FF] to-[#00C6FF] text-white font-semibold rounded-xl shadow-md hover:opacity-90 transition duration-200"
           >
             Create New Account
           </button>
           
           <button
             onClick={() => navigate('/login')}
-            className="w-full py-3.5 bg-white text-blue-600 font-semibold rounded-xl border border-gray-200 hover:bg-gray-50 transition duration-200"
+            className="w-full py-3.5 bg-[#1C2541] text-[#00C6FF] font-semibold rounded-xl border border-blue-900/60 hover:bg-blue-950/60 transition duration-200"
           >
             Log In
           </button>
@@ -44,7 +44,7 @@ export default function Welcome() {
       </div>
 
       {/* Footer */}
-      <footer className="absolute bottom-6 text-xs text-gray-400">
+      <footer className="absolute bottom-6 text-xs text-slate-400">
         &copy; {new Date().getFullYear()} Messenger App. All rights reserved.
       </footer>
     </div>

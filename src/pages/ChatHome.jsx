@@ -1,157 +1,4 @@
-// import React, { useState, useEffect } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import { useAuthStore } from '../store/useAuthStore';
-// import ChatsTab from '../components/ChatsTab';
-// import PeopleTab from '../components/PeopleTab';
-// import NotificationsTab from '../components/NotificationsTab';
-// import MenuTab from '../components/MenuTab';
-// import ProfileTab from '../components/MProfileTab';
-// import ChatBox from '../components/ChatBox';
-// import API from '../services/api';
-// import { 
-//   FiMessageSquare, FiUsers, FiBell, FiMenu, 
-//   FiLogOut, FiUser 
-// } from 'react-icons/fi';
-
-// export default function ChatHome() {
-//   const [activeTab, setActiveTab] = useState('chats');
-//   const [selectedChat, setSelectedChat] = useState(null);
-//   const [chatList, setChatList] = useState([]); // ডামি ডাটার বদলে ডায়নামিক স্টেট
-//   const [loadingChats, setLoadingChats] = useState(false);
-  
-//   const navigate = useNavigate();
-//   const authUser = useAuthStore((state) => state.authUser);
-
-//   // ব্যাকএন্ড থেকে ইউজারের কনভার্সেশন বা চ্যাট লিস্ট ফেচ করার ফাংশন
-//   const fetchConversations = async () => {
-//     setLoadingChats(true);
-//     try {
-//       const res = await API.get('/chats'); // আপনার চ্যাট রাউট
-//       setChatList(res.data);
-//     } catch (err) {
-//       console.error("Failed to fetch chats", err);
-//     } finally {
-//       setLoadingChats(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchConversations();
-//   }, [activeTab]); // যখনই ট্যাব পরিবর্তন হবে বা চ্যাট ট্যাবে আসা হবে, লিস্ট রিফ্রেশ হবে
-
-//   const handleLogout = () => {
-//     localStorage.removeItem('token');
-//     navigate('/login');
-//   };
-
-//   return (
-//     <div className="flex h-screen bg-white overflow-hidden relative">
-      
-//       {/* ১. বাম দিকের সাইডবার */}
-//       <div className="w-20 lg:w-56 bg-white border-r border-gray-200 flex flex-col justify-between py-5 px-3 select-none flex-shrink-0">
-//         <div>
-//           <div className="flex items-center justify-center lg:justify-start lg:px-4 mb-6">
-//             <h1 className="text-2xl font-black text-blue-600 hidden lg:block tracking-tight">messenger</h1>
-//             <span className="text-2xl font-black text-blue-600 lg:hidden">M</span>
-//           </div>
-
-//           <nav className="space-y-1">
-//             <button 
-//               onClick={() => setActiveTab('chats')}
-//               className={`w-full flex items-center space-x-3 px-3 py-3 rounded-xl transition ${activeTab === 'chats' ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100 font-medium'}`}
-//             >
-//               <FiMessageSquare className="w-6 h-6 flex-shrink-0" />
-//               <span className="hidden lg:inline text-sm">Chats</span>
-//             </button>
-
-//             <button 
-//               onClick={() => setActiveTab('people')}
-//               className={`w-full flex items-center space-x-3 px-3 py-3 rounded-xl transition ${activeTab === 'people' ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100 font-medium'}`}
-//             >
-//               <FiUsers className="w-6 h-6 flex-shrink-0" />
-//               <span className="hidden lg:inline text-sm">People</span>
-//             </button>
-
-//             <button 
-//               onClick={() => setActiveTab('notifications')}
-//               className={`w-full flex items-center space-x-3 px-3 py-3 rounded-xl transition relative ${activeTab === 'notifications' ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100 font-medium'}`}
-//             >
-//               <FiBell className="w-6 h-6 flex-shrink-0" />
-//               <span className="absolute top-3 left-6 lg:left-7 w-2 h-2 bg-red-500 rounded-full"></span>
-//               <span className="hidden lg:inline text-sm ml-2">Notifications</span>
-//             </button>
-
-//             <button 
-//               onClick={() => setActiveTab('menu')}
-//               className={`w-full flex items-center space-x-3 px-3 py-3 rounded-xl transition ${activeTab === 'menu' ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100 font-medium'}`}
-//             >
-//               <FiMenu className="w-6 h-6 flex-shrink-0" />
-//               <span className="hidden lg:inline text-sm">Menu</span>
-//             </button>
-//           </nav>
-//         </div>
-
-//         {/* সাইডবারের নিচে প্রফাইল ট্যাব ট্রিগার */}
-//         <div className="space-y-2 border-t border-gray-100 pt-4">
-//           <div 
-//             onClick={() => setActiveTab('profile')}
-//             className={`flex items-center space-x-3 px-2 py-2 rounded-xl cursor-pointer transition ${activeTab === 'profile' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-800'}`}
-//           >
-//             <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 shadow overflow-hidden bg-blue-600 text-white">
-//               {authUser?.profilePic ? (
-//                 <img src={authUser.profilePic} alt="Profile" className="w-full h-full object-cover" />
-//               ) : (
-//                 <span>{authUser?.name ? authUser.name.charAt(0).toUpperCase() : <FiUser />}</span>
-//               )}
-//             </div>
-//             <div className="hidden lg:block overflow-hidden">
-//               <h4 className="text-xs font-bold truncate">{authUser?.name || 'My Profile'}</h4>
-//               <p className="text-[10px] text-gray-400 truncate">@{authUser?.username || 'username'}</p>
-//             </div>
-//           </div>
-
-//           <button 
-//             onClick={handleLogout}
-//             className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 transition font-medium"
-//           >
-//             <FiLogOut className="w-6 h-6 flex-shrink-0" />
-//             <span className="hidden lg:inline text-sm">Log Out</span>
-//           </button>
-//         </div>
-//       </div>
-
-//       {/* ২. মাঝখানের ডাইনামিক ট্যাব প্যানেল */}
-//       {activeTab === 'chats' && (
-//         <ChatsTab 
-//           chatList={chatList} 
-//           loading={loadingChats}
-//           selectedChat={selectedChat} 
-//           setSelectedChat={setSelectedChat} 
-//         />
-//       )}
-//       {activeTab === 'people' && <PeopleTab />}
-//       {activeTab === 'notifications' && <NotificationsTab />}
-//       {activeTab === 'menu' && <MenuTab />}
-//       {activeTab === 'profile' && <ProfileTab />}
-
-//       {/* ৩. ডান দিকের মূল চ্যাট উইন্ডো */}
-//       <div className="hidden sm:flex flex-1 flex-col bg-gray-50 items-center justify-center">
-//         {selectedChat ? (
-//           <ChatBox chat={selectedChat} />
-//         ) : (
-//           <div className="text-center p-6">
-//             <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
-//               <FiMessageSquare className="w-10 h-10" />
-//             </div>
-//             <h3 className="text-xl font-bold text-gray-700">Select a conversation</h3>
-//             <p className="text-sm text-gray-400 mt-1">Choose from your friends list to start chatting.</p>
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   );
-// }
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import ChatsTab from '../components/ChatsTab';
@@ -159,9 +6,10 @@ import PeopleTab from '../components/PeopleTab';
 import NotificationsTab from '../components/NotificationsTab';
 import MenuTab from '../components/MenuTab';
 import ProfileTab from '../components/MyProfileTab';
-import UserProfileTab from '../components/UserProfileTab';
+import UserProfileTab from '../components/UserProfileTab'; // কাস্টম ইউজার প্রোফাইল ট্যাব ইমপোর্ট করা হলো
 import ChatBox from '../components/ChatBox';
 import API from '../services/api';
+import { io } from 'socket.io-client';
 import { 
   FiMessageSquare, FiUsers, FiBell, FiMenu, 
   FiLogOut, FiUser 
@@ -170,22 +18,74 @@ import {
 export default function ChatHome() {
   const [activeTab, setActiveTab] = useState('chats');
   const [selectedChat, setSelectedChat] = useState(null);
-  const [selectedUserProfile, setSelectedUserProfile] = useState(null);
+  const [selectedProfileUser, setSelectedProfileUser] = useState(null); // পিপল ট্যাব থেকে সিলেক্ট করা ইউজারের জন্য স্টেট
   const [chatList, setChatList] = useState([]);
   const [loadingChats, setLoadingChats] = useState(false);
   
+  // সাইডবার নোটিফিকেশন ট্র্যাকিং স্টেট
+  const [hasNewNotification, setHasNewNotification] = useState(false);
+  
   const navigate = useNavigate();
   const authUser = useAuthStore((state) => state.authUser);
+  const socketRef = useRef();
+
+  // সোকেট কানেকশন ও নোটিফিকেশন লিসেনার
+  useEffect(() => {
+    socketRef.current = io('http://localhost:5000');
+    if (authUser) {
+      socketRef.current.emit('addUser', authUser._id);
+    }
+
+    const handleNewMessageNotification = () => {
+      fetchConversations();
+    };
+
+    const handleNotificationUpdate = () => {
+      setHasNewNotification(true);
+    };
+
+    socketRef.current.on('getMessage', handleNewMessageNotification);
+    socketRef.current.on('getFriendRequest', handleNotificationUpdate);
+    socketRef.current.on('friendRequestAccepted', handleNotificationUpdate);
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.off('getMessage', handleNewMessageNotification);
+        socketRef.current.off('getFriendRequest', handleNotificationUpdate);
+        socketRef.current.off('friendRequestAccepted', handleNotificationUpdate);
+        socketRef.current.disconnect();
+      }
+    };
+  }, [authUser]);
+
+  // ইনিশিয়ালি চেক করা কোনো নতুন রিকোয়েস্ট বা নোটিফিকেশন আছে কিনা
+  useEffect(() => {
+    const checkInitialNotification = async () => {
+      try {
+        const [reqRes, notifRes] = await Promise.all([
+          API.get('/friends'),
+          API.get('/friends/notifications')
+        ]);
+        if ((reqRes.data && reqRes.data.length > 0) || (notifRes.data && notifRes.data.length > 0)) {
+          const lastCleared = localStorage.getItem('last_cleared_notifications');
+          const latestTime = notifRes.data[0]?.createdAt || reqRes.data[0]?.createdAt;
+          if (!lastCleared || (latestTime && new Date(latestTime) > new Date(lastCleared))) {
+            setHasNewNotification(true);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to check notifications", err);
+      }
+    };
+    checkInitialNotification();
+  }, []);
 
   const fetchConversations = async () => {
-    setLoadingChats(true);
     try {
       const res = await API.get('/chats');
       setChatList(res.data);
     } catch (err) {
       console.error("Failed to fetch chats", err);
-    } finally {
-      setLoadingChats(false);
     }
   };
 
@@ -193,146 +93,181 @@ export default function ChatHome() {
     fetchConversations();
   }, [activeTab]);
 
+  const unreadChatsCount = (chatList || []).filter(chat => {
+    return chat.unreadCount > 0;
+  }).length;
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
   };
 
-  const handleDirectMessage = async (friend) => {
+  // প্রোফাইল থেকে চ্যাট শুরু করার হ্যান্ডলার
+  const handleStartChatFromProfile = async (targetUser) => {
     try {
-      const res = await API.post('/chats', { receiverId: friend._id });
-      setSelectedChat(res.data);
-      setSelectedUserProfile(null);
-      setActiveTab('chats');
+      const res = await API.post('/chats', { receiverId: targetUser._id });
+      if (res.data) {
+        setSelectedChat(res.data);
+        setSelectedProfileUser(null); // প্রফাইল বন্ধ করে চ্যাটে চলে যাবে
+        setActiveTab('chats'); // চ্যাট ট্যাবে নিয়ে যাবে
+      }
     } catch (err) {
-      console.error("Failed to open chat", err);
-      setSelectedChat(friend);
-      setSelectedUserProfile(null);
-      setActiveTab('chats');
+      console.error("Failed to start chat", err);
     }
   };
 
   return (
-    <div className="flex h-screen bg-white overflow-hidden relative">
+    <div className="flex h-screen bg-[#0B132B] overflow-hidden relative font-sans text-white select-none">
       
       {/* ১. বাম দিকের সাইডবার */}
-      <div className="w-20 lg:w-56 bg-white border-r border-gray-200 flex flex-col justify-between py-5 px-3 select-none flex-shrink-0">
+      <div className="w-20 lg:w-56 bg-[#1C2541]/90 backdrop-blur-md border-r border-blue-900/50 flex flex-col justify-between py-5 px-3 select-none flex-shrink-0 shadow-2xl">
         <div>
           <div className="flex items-center justify-center lg:justify-start lg:px-4 mb-6">
-            <h1 className="text-2xl font-black text-blue-600 hidden lg:block tracking-tight">messenger</h1>
-            <span className="text-2xl font-black text-blue-600 lg:hidden">M</span>
+            <h1 className="text-xl font-black bg-gradient-to-r from-[#00C6FF] via-[#4CC9F0] to-[#0084FF] bg-clip-text text-transparent hidden lg:block tracking-tight">
+              messenger
+            </h1>
+            <span className="text-xl font-black bg-gradient-to-r from-[#00C6FF] to-[#0084FF] bg-clip-text text-transparent lg:hidden">M</span>
           </div>
 
-          <nav className="space-y-1">
+          <nav className="space-y-1.5">
             <button 
-              onClick={() => { setActiveTab('chats'); setSelectedUserProfile(null); }}
-              className={`w-full flex items-center space-x-3 px-3 py-3 rounded-xl transition ${activeTab === 'chats' && !selectedUserProfile ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100 font-medium'}`}
+              onClick={() => {
+                setActiveTab('chats');
+                setSelectedProfileUser(null);
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-3 rounded-2xl transition relative cursor-pointer ${activeTab === 'chats' ? 'bg-[#0B132B] text-[#00C6FF] font-black border border-cyan-500/40 shadow-inner' : 'text-slate-300 hover:bg-[#0B132B]/60 font-bold'}`}
             >
-              <FiMessageSquare className="w-6 h-6 flex-shrink-0" />
-              <span className="hidden lg:inline text-sm">Chats</span>
+              <FiMessageSquare className="w-5 h-5 flex-shrink-0 text-[#00C6FF]" />
+              <span className="hidden lg:inline text-xs">Chats</span>
+              
+              {unreadChatsCount > 0 && (
+                <span className="absolute top-2.5 left-6 lg:left-7 bg-gradient-to-r from-[#0084FF] to-[#00C6FF] text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-md">
+                  {unreadChatsCount}
+                </span>
+              )}
             </button>
 
             <button 
-              onClick={() => { setActiveTab('people'); setSelectedUserProfile(null); }}
-              className={`w-full flex items-center space-x-3 px-3 py-3 rounded-xl transition ${activeTab === 'people' && !selectedUserProfile ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100 font-medium'}`}
+              onClick={() => {
+                setActiveTab('people');
+                setSelectedProfileUser(null);
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-3 rounded-2xl transition cursor-pointer ${activeTab === 'people' ? 'bg-[#0B132B] text-[#00C6FF] font-black border border-cyan-500/40 shadow-inner' : 'text-slate-300 hover:bg-[#0B132B]/60 font-bold'}`}
             >
-              <FiUsers className="w-6 h-6 flex-shrink-0" />
-              <span className="hidden lg:inline text-sm">People</span>
+              <FiUsers className="w-5 h-5 flex-shrink-0 text-cyan-400" />
+              <span className="hidden lg:inline text-xs">People</span>
+            </button>
+
+            {/* নোটিফিকেশন ট্যাব বাটন */}
+            <button 
+              onClick={() => {
+                setActiveTab('notifications');
+                setSelectedProfileUser(null);
+                setHasNewNotification(false);
+                localStorage.setItem('last_cleared_notifications', new Date().toISOString());
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-3 rounded-2xl transition relative cursor-pointer ${activeTab === 'notifications' ? 'bg-[#0B132B] text-[#00C6FF] font-black border border-cyan-500/40 shadow-inner' : 'text-slate-300 hover:bg-[#0B132B]/60 font-bold'}`}
+            >
+              <FiBell className="w-5 h-5 flex-shrink-0 text-amber-400" />
+              {hasNewNotification && (
+                <span className="absolute top-3 left-6 lg:left-7 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-[#1C2541] shadow-[0_0_6px_#EF4444]"></span>
+              )}
+              <span className="hidden lg:inline text-xs ml-2">Notifications</span>
             </button>
 
             <button 
-              onClick={() => { setActiveTab('notifications'); setSelectedUserProfile(null); }}
-              className={`w-full flex items-center space-x-3 px-3 py-3 rounded-xl transition relative ${activeTab === 'notifications' && !selectedUserProfile ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100 font-medium'}`}
+              onClick={() => {
+                setActiveTab('menu');
+                setSelectedProfileUser(null);
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-3 rounded-2xl transition cursor-pointer ${activeTab === 'menu' ? 'bg-[#0B132B] text-[#00C6FF] font-black border border-cyan-500/40 shadow-inner' : 'text-slate-300 hover:bg-[#0B132B]/60 font-bold'}`}
             >
-              <FiBell className="w-6 h-6 flex-shrink-0" />
-              <span className="absolute top-3 left-6 lg:left-7 w-2 h-2 bg-red-500 rounded-full"></span>
-              <span className="hidden lg:inline text-sm ml-2">Notifications</span>
-            </button>
-
-            <button 
-              onClick={() => { setActiveTab('menu'); setSelectedUserProfile(null); }}
-              className={`w-full flex items-center space-x-3 px-3 py-3 rounded-xl transition ${activeTab === 'menu' && !selectedUserProfile ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100 font-medium'}`}
-            >
-              <FiMenu className="w-6 h-6 flex-shrink-0" />
-              <span className="hidden lg:inline text-sm">Menu</span>
+              <FiMenu className="w-5 h-5 flex-shrink-0 text-purple-400" />
+              <span className="hidden lg:inline text-xs">Menu</span>
             </button>
           </nav>
         </div>
 
-        {/* সাইডবারের নিচে প্রফাইল ট্যাব ট্রিগার */}
-        <div className="space-y-2 border-t border-gray-100 pt-4">
+        {/* সাইডবারের নিচে প্রফাইল ট্যাব ও লগআউট */}
+        <div className="space-y-2 border-t border-blue-900/50 pt-4">
           <div 
-            onClick={() => { setActiveTab('profile'); setSelectedUserProfile(null); }}
-            className={`flex items-center space-x-3 px-2 py-2 rounded-xl cursor-pointer transition ${activeTab === 'profile' && !selectedUserProfile ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-800'}`}
+            onClick={() => {
+              setActiveTab('profile');
+              setSelectedProfileUser(null);
+            }}
+            className={`flex items-center space-x-3 px-2 py-2 rounded-2xl cursor-pointer transition border ${activeTab === 'profile' ? 'bg-[#0B132B] border-cyan-500/40 shadow-inner text-white' : 'hover:bg-[#0B132B]/60 border-transparent text-slate-200'}`}
           >
-            <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 shadow overflow-hidden bg-blue-600 text-white">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 shadow-md overflow-hidden bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] text-white">
               {authUser?.profilePic ? (
                 <img src={authUser.profilePic} alt="Profile" className="w-full h-full object-cover" />
               ) : (
                 <span>{authUser?.name ? authUser.name.charAt(0).toUpperCase() : <FiUser />}</span>
               )}
             </div>
-            <div className="hidden lg:block overflow-hidden">
-              <h4 className="text-xs font-bold truncate">{authUser?.name || 'My Profile'}</h4>
-              <p className="text-[10px] text-gray-400 truncate">@{authUser?.username || 'username'}</p>
+            <div className="hidden lg:block overflow-hidden min-w-0">
+              <h4 className="text-xs font-black truncate text-white">{authUser?.name || 'My Profile'}</h4>
+              <p className="text-[10px] text-cyan-300/70 truncate font-semibold">@{authUser?.username || 'username'}</p>
             </div>
           </div>
 
           <button 
             onClick={handleLogout}
-            className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 transition font-medium"
+            className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-2xl text-red-400 hover:bg-red-950/40 transition font-bold text-xs border border-red-500/30 cursor-pointer shadow-md"
           >
-            <FiLogOut className="w-6 h-6 flex-shrink-0" />
-            <span className="hidden lg:inline text-sm">Log Out</span>
+            <FiLogOut className="w-5 h-5 flex-shrink-0" />
+            <span className="hidden lg:inline">Log Out</span>
           </button>
         </div>
       </div>
 
-      {/* ২. মাঝখানের ডাইনামিক ট্যাব প্যানেল */}
-      {selectedUserProfile ? (
+      {/* ২. মাঝখানের ডাইনামিক ট্যাব প্যানেল (এখানে selectedProfileUser থাকলে UserProfileTab দেখাবে) */}
+     {selectedProfileUser ? (
         <UserProfileTab 
-          user={selectedUserProfile} 
-          onBack={() => setSelectedUserProfile(null)} 
-          onStartChat={handleDirectMessage}
+          user={selectedProfileUser} 
+          onBack={() => setSelectedProfileUser(null)} 
+          onStartChat={handleStartChatFromProfile}
+          onSelectUser={(user) => setSelectedProfileUser(user)} // এই লাইনটি যোগ করুন
         />
       ) : (
         <>
-          {activeTab === 'chats' && (
+         {activeTab === 'chats' && (
             <ChatsTab 
               chatList={chatList} 
+              setChatList={setChatList}
               loading={loadingChats}
               selectedChat={selectedChat} 
               setSelectedChat={setSelectedChat} 
+              authUser={authUser}
+              socketRef={socketRef}
             />
           )}
           {activeTab === 'people' && (
             <PeopleTab 
-              onSelectUser={(user) => setSelectedUserProfile(user)} 
+              onSelectUser={(user) => setSelectedProfileUser(user)} 
             />
           )}
           {activeTab === 'notifications' && <NotificationsTab />}
-          {activeTab === 'menu' && <MenuTab />}
+          {activeTab === 'menu' && <MenuTab setActiveTab={setActiveTab} />}
           {activeTab === 'profile' && (
             <ProfileTab 
-              setSelectedChat={handleDirectMessage} 
-              onStartChat={handleDirectMessage}
-              onSelectUser={(user) => setSelectedUserProfile(user)}
+              onSelectUser={(user) => setSelectedProfileUser(user)} 
+              setSelectedChat={setSelectedChat}
             />
           )}
         </>
       )}
 
       {/* ৩. ডান দিকের মূল চ্যাট উইন্ডো */}
-      <div className="hidden sm:flex flex-1 flex-col bg-gray-50 items-center justify-center">
+      <div className="hidden sm:flex flex-1 flex-col bg-[#0B132B] items-center justify-center">
         {selectedChat ? (
-          <ChatBox chat={selectedChat} />
+          <ChatBox chat={selectedChat} authUser={authUser} socketRef={socketRef} />
         ) : (
           <div className="text-center p-6">
-            <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
-              <FiMessageSquare className="w-10 h-10" />
+            <div className="w-20 h-20 bg-[#1C2541] border border-blue-500/30 text-[#00C6FF] rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
+              <FiMessageSquare className="w-9 h-9" />
             </div>
-            <h3 className="text-xl font-bold text-gray-700">Select a conversation</h3>
-            <p className="text-sm text-gray-400 mt-1">Choose from your friends list to start chatting.</p>
+            <h3 className="text-base font-black text-white">Select a conversation</h3>
+            <p className="text-xs text-cyan-300/70 mt-1 font-medium">Choose from your friends list to start chatting.</p>
           </div>
         )}
       </div>

@@ -1,665 +1,56 @@
-// import React, { useState, useEffect, useRef } from 'react';
-// import { FiSearch, FiEdit, FiMoreVertical, FiEye, FiUserX, FiTrash2 } from 'react-icons/fi';
-// import API from '../services/api';
-// import UserProfileTab from './UserProfileTab'; // আলাদা ফাইল থেকে ইম্পোর্ট
-
-// export default function ChatsTab({ selectedChat, setSelectedChat, authUser, socketRef }) {
-//   const [friendsList, setFriendsList] = useState([]);
-//   const [loading, setLoading] = useState(false);
-//   const [searchTerm, setSearchTerm] = useState('');
-//   const [activeMenuId, setActiveMenuId] = useState(null);
-//   const [viewingProfileUser, setViewingProfileUser] = useState(null);
-//   const menuRef = useRef(null);
-
-//   useEffect(() => {
-//     const fetchChats = async () => {
-//       setLoading(true);
-//       try {
-//         const res = await API.get('/friends/my-friends');
-//         setFriendsList(res.data);
-//       } catch (err) {
-//         console.error("Failed to fetch chat list", err);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-//     fetchChats();
-//   }, []);
-
-//   useEffect(() => {
-//     const handleClickOutside = (event) => {
-//       if (menuRef.current && !menuRef.current.contains(event.target)) {
-//         setActiveMenuId(null);
-//       }
-//     };
-//     document.addEventListener("mousedown", handleClickOutside);
-//     return () => document.removeEventListener("mousedown", handleClickOutside);
-//   }, []);
-
-//   const handleSelectChat = (friend) => {
-//     setSelectedChat(friend);
-//     setActiveMenuId(null);
-//   };
-
-//   const handleDeleteChat = async (friendId, e) => {
-//     e.stopPropagation();
-//     try {
-//       await API.put(`/chats/hide-chat/${friendId}`).catch(() => {});
-//       setFriendsList(prev => prev.filter(f => f._id !== friendId));
-//       setActiveMenuId(null);
-//       if (selectedChat?._id === friendId) {
-//         setSelectedChat(null);
-//       }
-//     } catch (err) {
-//       console.error("Failed to delete chat from list", err);
-//     }
-//   };
-
-//   const handleBlockUser = async (friendId, e) => {
-//     e.stopPropagation();
-//     try {
-//       const res = await API.put(`/users/block/${friendId}`);
-//       if (socketRef?.current) {
-//         socketRef.current.emit('blockUpdate', { receiverId: friendId });
-//         socketRef.current.emit('userBlockedStatusChanged', { receiverId: friendId });
-//       }
-//       alert(res.data.message || "User blocked successfully");
-//       setActiveMenuId(null);
-//     } catch (err) {
-//       console.error("Failed to block user", err);
-//       alert("Failed to block user");
-//     }
-//   };
-
-//   const filteredChats = friendsList.filter(friend => 
-//     friend.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//     friend.username?.toLowerCase().includes(searchTerm.toLowerCase())
-//   );
-
-//   if (viewingProfileUser) {
-//     return <UserProfileTab user={viewingProfileUser} onBack={() => setViewingProfileUser(null)} />;
-//   }
-
-//   return (
-//     <div className="w-full flex-1 sm:w-[350px] lg:w-[380px] flex flex-col h-full border-r border-gray-200 bg-white relative">
-//       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-//         <h2 className="text-xl font-bold text-gray-800">Chats</h2>
-//         <button className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition">
-//           <FiEdit className="w-4 h-4 text-gray-700" />
-//         </button>
-//       </div>
-
-//       <div className="px-4 py-2">
-//         <div className="flex items-center bg-gray-100 rounded-full px-4 py-2 space-x-2">
-//           <FiSearch className="w-4 h-4 text-gray-400" />
-//           <input 
-//             type="text" 
-//             placeholder="Search Messenger" 
-//             value={searchTerm}
-//             onChange={(e) => setSearchTerm(e.target.value)}
-//             className="bg-transparent w-full focus:outline-none text-sm text-gray-700"
-//           />
-//         </div>
-//       </div>
-
-//       <div className="flex-1 overflow-y-auto divide-y divide-gray-50" ref={menuRef}>
-//         {loading ? (
-//           <div className="text-center text-gray-400 text-sm mt-10">Loading chats...</div>
-//         ) : filteredChats.length === 0 ? (
-//           <div className="text-center text-gray-400 text-sm mt-10 px-4">
-//             No chats yet. Connect with friends to start chatting!
-//           </div>
-//         ) : (
-//           filteredChats.map((friend) => {
-//             return (
-//               <div 
-//                 key={friend._id} 
-//                 onClick={() => handleSelectChat(friend)}
-//                 className={`flex items-center justify-between px-4 py-3 hover:bg-gray-100 cursor-pointer transition relative ${selectedChat?._id === friend._id ? 'bg-gray-100' : ''}`}
-//               >
-//                 <div className="flex items-center space-x-3 overflow-hidden flex-1">
-//                   <div className="relative flex-shrink-0">
-//                     <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg bg-gradient-to-br from-blue-400 to-indigo-600 overflow-hidden">
-//                       {friend.profilePic ? (
-//                         <img src={friend.profilePic} alt={friend.name} className="w-full h-full object-cover" />
-//                       ) : (
-//                         <span>{friend.name?.charAt(0).toUpperCase()}</span>
-//                       )}
-//                     </div>
-//                     <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
-//                   </div>
-
-//                   <div className="overflow-hidden flex-1 min-w-0">
-//                     <h4 className="text-sm font-semibold text-gray-800 truncate">
-//                       {friend.name}
-//                     </h4>
-//                     <p className="text-xs text-gray-500 truncate">
-//                       @{friend.username} • Tap to chat
-//                     </p>
-//                   </div>
-//                 </div>
-
-//                 <div className="relative flex items-center space-x-1 flex-shrink-0 ml-2">
-//                   <button 
-//                     onClick={(e) => {
-//                       e.stopPropagation();
-//                       setActiveMenuId(activeMenuId === friend._id ? null : friend._id);
-//                     }}
-//                     className="p-1.5 hover:bg-gray-200 rounded-full text-gray-500 transition"
-//                   >
-//                     <FiMoreVertical className="w-4 h-4" />
-//                   </button>
-
-//                   {activeMenuId === friend._id && (
-//                     <div className="absolute right-0 top-8 z-50 w-44 bg-white border border-gray-200 shadow-xl rounded-lg py-1 text-xs text-gray-700">
-//                       <button 
-//                         onClick={(e) => {
-//                           e.stopPropagation();
-//                           setViewingProfileUser(friend);
-//                           setActiveMenuId(null);
-//                         }} 
-//                         className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2"
-//                       >
-//                         <FiEye className="w-3.5 h-3.5 text-blue-600" /> View Profile
-//                       </button>
-
-//                       <button 
-//                         onClick={(e) => handleBlockUser(friend._id, e)} 
-//                         className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2"
-//                       >
-//                         <FiUserX className="w-3.5 h-3.5 text-orange-600" /> Block User
-//                       </button>
-
-//                       <button 
-//                         onClick={(e) => handleDeleteChat(friend._id, e)} 
-//                         className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2"
-//                       >
-//                         <FiTrash2 className="w-3.5 h-3.5" /> Delete Chat
-//                       </button>
-//                     </div>
-//                   )}
-//                 </div>
-//               </div>
-//             );
-//           })
-//         )}
-//       </div>
-//     </div>
-//   );
-// }
-
-
-// import React, { useState, useEffect, useRef } from 'react';
-// import { FiSearch, FiEdit, FiMoreVertical, FiEye, FiUserX, FiTrash2 } from 'react-icons/fi';
-// import API from '../services/api';
-// import UserProfileTab from './UserProfileTab'; // ফুল প্রফাইল পেজ কম্পোনেন্ট
-
-// export default function ChatsTab({ selectedChat, setSelectedChat, authUser, socketRef }) {
-//   const [friendsList, setFriendsList] = useState([]);
-//   const [loading, setLoading] = useState(false);
-//   const [searchTerm, setSearchTerm] = useState('');
-//   const [activeMenuId, setActiveMenuId] = useState(null);
-//   const [viewingProfileUser, setViewingProfileUser] = useState(null);
-//   const menuRef = useRef(null);
-
-//   useEffect(() => {
-//     const fetchChats = async () => {
-//       setLoading(true);
-//       try {
-//         const res = await API.get('/friends/my-friends');
-//         setFriendsList(res.data);
-//       } catch (err) {
-//         console.error("Failed to fetch chat list", err);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-//     fetchChats();
-//   }, []);
-
-//   useEffect(() => {
-//     const handleClickOutside = (event) => {
-//       if (menuRef.current && !menuRef.current.contains(event.target)) {
-//         setActiveMenuId(null);
-//       }
-//     };
-//     document.addEventListener("mousedown", handleClickOutside);
-//     return () => document.removeEventListener("mousedown", handleClickOutside);
-//   }, []);
-
-//   const handleSelectChat = (friend) => {
-//     setSelectedChat(friend);
-//     setActiveMenuId(null);
-//   };
-
-//   // চ্যাট লিস্ট থেকে চ্যাট হাইড বা ডিলিট করার হ্যান্ডলার
-//   const handleDeleteChat = async (friendId, e) => {
-//     e.stopPropagation();
-//     try {
-//       await API.put(`/chats/hide-chat/${friendId}`).catch(() => {});
-//       setFriendsList(prev => prev.filter(f => f._id !== friendId));
-//       setActiveMenuId(null);
-//       if (selectedChat?._id === friendId) {
-//         setSelectedChat(null);
-//       }
-//     } catch (err) {
-//       console.error("Failed to delete chat from list", err);
-//     }
-//   };
-
-//   // ৩-ডট মেনু থেকে ব্লক করার হ্যান্ডলার (চ্যাট বক্সের মতোই লাইভ সকেট আপডেটসহ)
-//   const handleBlockUser = async (friendId, e) => {
-//     e.stopPropagation();
-//     try {
-//       const res = await API.put(`/users/block/${friendId}`);
-//       const isBlockedNow = res.data.blocked; // true হলে ব্লক, false হলে আনব্লক
-
-//       if (socketRef?.current) {
-//         socketRef.current.emit('blockUpdate', { receiverId: friendId });
-//         socketRef.current.emit('userBlockedStatusChanged', { receiverId: friendId });
-//       }
-
-//       alert(res.data.message || (isBlockedNow ? "User blocked successfully" : "User unblocked successfully"));
-//       setActiveMenuId(null);
-//     } catch (err) {
-//       console.error("Failed to block user", err);
-//       alert("Failed to update block status");
-//     }
-//   };
-
-//   const filteredChats = friendsList.filter(friend => 
-//     friend.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//     friend.username?.toLowerCase().includes(searchTerm.toLowerCase())
-//   );
-
-//   // যদি প্রফাইল পেজ দেখতে চাওয়া হয়
-//   if (viewingProfileUser) {
-//     return <UserProfileTab user={viewingProfileUser} onBack={() => setViewingProfileUser(null)} />;
-//   }
-
-//   return (
-//     <div className="w-full flex-1 sm:w-[350px] lg:w-[380px] flex flex-col h-full border-r border-gray-200 bg-white relative">
-//       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-//         <h2 className="text-xl font-bold text-gray-800">Chats</h2>
-//         <button className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition">
-//           <FiEdit className="w-4 h-4 text-gray-700" />
-//         </button>
-//       </div>
-
-//       <div className="px-4 py-2">
-//         <div className="flex items-center bg-gray-100 rounded-full px-4 py-2 space-x-2">
-//           <FiSearch className="w-4 h-4 text-gray-400" />
-//           <input 
-//             type="text" 
-//             placeholder="Search Messenger" 
-//             value={searchTerm}
-//             onChange={(e) => setSearchTerm(e.target.value)}
-//             className="bg-transparent w-full focus:outline-none text-sm text-gray-700"
-//           />
-//         </div>
-//       </div>
-
-//       <div className="flex-1 overflow-y-auto divide-y divide-gray-50" ref={menuRef}>
-//         {loading ? (
-//           <div className="text-center text-gray-400 text-sm mt-10">Loading chats...</div>
-//         ) : filteredChats.length === 0 ? (
-//           <div className="text-center text-gray-400 text-sm mt-10 px-4">
-//             No chats yet. Connect with friends to start chatting!
-//           </div>
-//         ) : (
-//           filteredChats.map((friend) => {
-//             return (
-//               <div 
-//                 key={friend._id} 
-//                 onClick={() => handleSelectChat(friend)}
-//                 className={`flex items-center justify-between px-4 py-3 hover:bg-gray-100 cursor-pointer transition relative ${selectedChat?._id === friend._id ? 'bg-gray-100' : ''}`}
-//               >
-//                 <div className="flex items-center space-x-3 overflow-hidden flex-1">
-//                   <div className="relative flex-shrink-0">
-//                     <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg bg-gradient-to-br from-blue-400 to-indigo-600 overflow-hidden">
-//                       {friend.profilePic ? (
-//                         <img src={friend.profilePic} alt={friend.name} className="w-full h-full object-cover" />
-//                       ) : (
-//                         <span>{friend.name?.charAt(0).toUpperCase()}</span>
-//                       )}
-//                     </div>
-//                     <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
-//                   </div>
-
-//                   <div className="overflow-hidden flex-1 min-w-0">
-//                     <h4 className="text-sm font-semibold text-gray-800 truncate">
-//                       {friend.name}
-//                     </h4>
-//                     <p className="text-xs text-gray-500 truncate">
-//                       @{friend.username} • Tap to chat
-//                     </p>
-//                   </div>
-//                 </div>
-
-//                 <div className="relative flex items-center space-x-1 flex-shrink-0 ml-2">
-//                   <button 
-//                     onClick={(e) => {
-//                       e.stopPropagation();
-//                       setActiveMenuId(activeMenuId === friend._id ? null : friend._id);
-//                     }}
-//                     className="p-1.5 hover:bg-gray-200 rounded-full text-gray-500 transition"
-//                   >
-//                     <FiMoreVertical className="w-4 h-4" />
-//                   </button>
-
-//                   {/* ৩-ডট মেনু ড্রপডাউন */}
-//                   {activeMenuId === friend._id && (
-//                     <div className="absolute right-0 top-8 z-50 w-44 bg-white border border-gray-200 shadow-xl rounded-lg py-1 text-xs text-gray-700">
-//                       {/* View Profile */}
-//                       <button 
-//                         onClick={(e) => {
-//                           e.stopPropagation();
-//                           setViewingProfileUser(friend);
-//                           setActiveMenuId(null);
-//                         }} 
-//                         className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2"
-//                       >
-//                         <FiEye className="w-3.5 h-3.5 text-blue-600" /> View Profile
-//                       </button>
-
-//                       {/* Block User */}
-//                       <button 
-//                         onClick={(e) => handleBlockUser(friend._id, e)} 
-//                         className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2 text-orange-600"
-//                       >
-//                         <FiUserX className="w-3.5 h-3.5" /> Block User
-//                       </button>
-
-//                       {/* Delete Chat */}
-//                       <button 
-//                         onClick={(e) => handleDeleteChat(friend._id, e)} 
-//                         className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2"
-//                       >
-//                         <FiTrash2 className="w-3.5 h-3.5" /> Delete Chat
-//                       </button>
-//                     </div>
-//                   )}
-//                 </div>
-//               </div>
-//             );
-//           })
-//         )}
-//       </div>
-//     </div>
-//   );
-// }
-
-
-// import React, { useState, useEffect, useRef } from 'react';
-// import { FiSearch, FiEdit, FiMoreVertical, FiEye, FiUserX, FiTrash2 } from 'react-icons/fi';
-// import API from '../services/api';
-// import UserProfileTab from './UserProfileTab';
-
-// export default function ChatsTab({ selectedChat, setSelectedChat, authUser, socketRef }) {
-//   const [friendsList, setFriendsList] = useState([]);
-//   const [loading, setLoading] = useState(false);
-//   const [searchTerm, setSearchTerm] = useState('');
-//   const [activeMenuId, setActiveMenuId] = useState(null);
-//   const [viewingProfileUser, setViewingProfileUser] = useState(null);
-//   const menuRef = useRef(null);
-
-//   const fetchChats = async () => {
-//     setLoading(true);
-//     try {
-//       const res = await API.get('/friends/my-friends');
-//       setFriendsList(res.data);
-//     } catch (err) {
-//       console.error("Failed to fetch chat list", err);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchChats();
-//   }, []);
-
-//   // সকেট লাইভ লিসেনার (ব্লক স্ট্যাটাস পরিবর্তন হলে সাথে সাথে লিস্ট রিফ্রেশ হবে)
-//   useEffect(() => {
-//     if (!socketRef?.current) return;
-
-//     const handleBlockStatusChanged = () => {
-//       fetchChats(); // পেজ রিলোড ছাড়াই চ্যাট লিস্ট বা স্ট্যাটাস আপডেট হবে
-//     };
-
-//     socketRef.current.on('userBlockedStatusChanged', handleBlockStatusChanged);
-//     socketRef.current.on('blockUpdate', handleBlockStatusChanged);
-
-//     return () => {
-//       if (socketRef.current) {
-//         socketRef.current.off('userBlockedStatusChanged', handleBlockStatusChanged);
-//         socketRef.current.off('blockUpdate', handleBlockStatusChanged);
-//       }
-//     };
-//   }, [socketRef]);
-
-//   useEffect(() => {
-//     const handleClickOutside = (event) => {
-//       if (menuRef.current && !menuRef.current.contains(event.target)) {
-//         setActiveMenuId(null);
-//       }
-//     };
-//     document.addEventListener("mousedown", handleClickOutside);
-//     return () => document.removeEventListener("mousedown", handleClickOutside);
-//   }, []);
-
-//   const handleSelectChat = (friend) => {
-//     setSelectedChat(friend);
-//     setActiveMenuId(null);
-//   };
-
-//   const handleDeleteChat = async (friendId, e) => {
-//     e.stopPropagation();
-//     try {
-//       await API.put(`/chats/hide-chat/${friendId}`).catch(() => {});
-//       setFriendsList(prev => prev.filter(f => f._id !== friendId));
-//       setActiveMenuId(null);
-//       if (selectedChat?._id === friendId) {
-//         setSelectedChat(null);
-//       }
-//     } catch (err) {
-//       console.error("Failed to delete chat from list", err);
-//     }
-//   };
-
-//   // ব্লক করার হ্যান্ডলার (সকেট লাইভ ইভেন্ট ইমিটসহ)
-//   const handleBlockUser = async (friendId, e) => {
-//     e.stopPropagation();
-//     try {
-//       const res = await API.put(`/users/block/${friendId}`);
-//       const isBlockedNow = res.data.blocked;
-
-//       if (socketRef?.current) {
-//         socketRef.current.emit('blockUpdate', { receiverId: friendId });
-//         socketRef.current.emit('userBlockedStatusChanged', { receiverId: friendId });
-//       }
-
-//       alert(res.data.message || (isBlockedNow ? "User blocked successfully" : "User unblocked successfully"));
-//       setActiveMenuId(null);
-//       fetchChats(); // নিজের লিস্ট সাথে সাথে আপডেট করা
-//     } catch (err) {
-//       console.error("Failed to block user", err);
-//       alert("Failed to update block status");
-//     }
-//   };
-
-//   const filteredChats = friendsList.filter(friend => 
-//     friend.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//     friend.username?.toLowerCase().includes(searchTerm.toLowerCase())
-//   );
-
-//   if (viewingProfileUser) {
-//     return <UserProfileTab user={viewingProfileUser} onBack={() => setViewingProfileUser(null)} />;
-//   }
-
-//   return (
-//     <div className="w-full flex-1 sm:w-[350px] lg:w-[380px] flex flex-col h-full border-r border-gray-200 bg-white relative">
-//       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-//         <h2 className="text-xl font-bold text-gray-800">Chats</h2>
-//         <button className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition">
-//           <FiEdit className="w-4 h-4 text-gray-700" />
-//         </button>
-//       </div>
-
-//       <div className="px-4 py-2">
-//         <div className="flex items-center bg-gray-100 rounded-full px-4 py-2 space-x-2">
-//           <FiSearch className="w-4 h-4 text-gray-400" />
-//           <input 
-//             type="text" 
-//             placeholder="Search Messenger" 
-//             value={searchTerm}
-//             onChange={(e) => setSearchTerm(e.target.value)}
-//             className="bg-transparent w-full focus:outline-none text-sm text-gray-700"
-//           />
-//         </div>
-//       </div>
-
-//       <div className="flex-1 overflow-y-auto divide-y divide-gray-50" ref={menuRef}>
-//         {loading ? (
-//           <div className="text-center text-gray-400 text-sm mt-10">Loading chats...</div>
-//         ) : filteredChats.length === 0 ? (
-//           <div className="text-center text-gray-400 text-sm mt-10 px-4">
-//             No chats yet. Connect with friends to start chatting!
-//           </div>
-//         ) : (
-//           filteredChats.map((friend) => {
-//             return (
-//               <div 
-//                 key={friend._id} 
-//                 onClick={() => handleSelectChat(friend)}
-//                 className={`flex items-center justify-between px-4 py-3 hover:bg-gray-100 cursor-pointer transition relative ${selectedChat?._id === friend._id ? 'bg-gray-100' : ''}`}
-//               >
-//                 <div className="flex items-center space-x-3 overflow-hidden flex-1">
-//                   <div className="relative flex-shrink-0">
-//                     <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg bg-gradient-to-br from-blue-400 to-indigo-600 overflow-hidden">
-//                       {friend.profilePic ? (
-//                         <img src={friend.profilePic} alt={friend.name} className="w-full h-full object-cover" />
-//                       ) : (
-//                         <span>{friend.name?.charAt(0).toUpperCase()}</span>
-//                       )}
-//                     </div>
-//                     <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
-//                   </div>
-
-//                   <div className="overflow-hidden flex-1 min-w-0">
-//                     <h4 className="text-sm font-semibold text-gray-800 truncate">
-//                       {friend.name}
-//                     </h4>
-//                     <p className="text-xs text-gray-500 truncate">
-//                       @{friend.username} • Tap to chat
-//                     </p>
-//                   </div>
-//                 </div>
-
-//                 <div className="relative flex items-center space-x-1 flex-shrink-0 ml-2">
-//                   <button 
-//                     onClick={(e) => {
-//                       e.stopPropagation();
-//                       setActiveMenuId(activeMenuId === friend._id ? null : friend._id);
-//                     }}
-//                     className="p-1.5 hover:bg-gray-200 rounded-full text-gray-500 transition"
-//                   >
-//                     <FiMoreVertical className="w-4 h-4" />
-//                   </button>
-
-//                   {activeMenuId === friend._id && (
-//                     <div className="absolute right-0 top-8 z-50 w-44 bg-white border border-gray-200 shadow-xl rounded-lg py-1 text-xs text-gray-700">
-//                       <button 
-//                         onClick={(e) => {
-//                           e.stopPropagation();
-//                           setViewingProfileUser(friend);
-//                           setActiveMenuId(null);
-//                         }} 
-//                         className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2"
-//                       >
-//                         <FiEye className="w-3.5 h-3.5 text-blue-600" /> View Profile
-//                       </button>
-
-//                       <button 
-//                         onClick={(e) => handleBlockUser(friend._id, e)} 
-//                         className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2 text-orange-600"
-//                       >
-//                         <FiUserX className="w-3.5 h-3.5" /> Block User
-//                       </button>
-
-//                       <button 
-//                         onClick={(e) => handleDeleteChat(friend._id, e)} 
-//                         className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2"
-//                       >
-//                         <FiTrash2 className="w-3.5 h-3.5" /> Delete Chat
-//                       </button>
-//                     </div>
-//                   )}
-//                 </div>
-//               </div>
-//             );
-//           })
-//         )}
-//       </div>
-//     </div>
-//   );
-// }
-
 import React, { useState, useEffect, useRef } from 'react';
 import { FiSearch, FiEdit, FiMoreVertical, FiEye, FiTrash2 } from 'react-icons/fi';
 import API from '../services/api';
 import UserProfileTab from './UserProfileTab';
-import BlockButton from './BlockButton'; // রিইউজেবল ব্লক বাটন ইম্পোর্ট
 
-export default function ChatsTab({ selectedChat, setSelectedChat, authUser, socketRef }) {
-  const [friendsList, setFriendsList] = useState([]);
+export default function ChatsTab({ selectedChat, setSelectedChat, authUser, socketRef, chatList, setChatList }) {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [viewingProfileUser, setViewingProfileUser] = useState(null);
-  const [myBlockedList, setMyBlockedList] = useState([]); // নিজের ব্লক করা ইউজারের তালিকা
   const menuRef = useRef(null);
 
-  const fetchChatsAndProfile = async () => {
+  const fetchConversations = async () => {
     setLoading(true);
     try {
-      const res = await API.get('/friends/my-friends');
-      setFriendsList(res.data);
-
-      // নিজের প্রোফাইল থেকে ব্লক করা ইউজারদের লিস্ট নিয়ে আসা
-      if (authUser?._id) {
-        const profileRes = await API.get(`/users/profile/${authUser._id}`);
-        setMyBlockedList(profileRes.data.blockedUsers || []);
-      }
+      const res = await API.get('/chats');
+      setChatList(res.data);
     } catch (err) {
-      console.error("Failed to fetch chat list or profile", err);
+      console.error("Failed to fetch conversations", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchChatsAndProfile();
+    fetchConversations();
   }, [authUser]);
 
-  // সকেট লাইভ লিসেনার
   useEffect(() => {
     if (!socketRef?.current) return;
 
-    const handleBlockStatusChanged = () => {
-      fetchChatsAndProfile();
+    const handleMessageUpdate = async (newMessage) => {
+      if (selectedChat && (newMessage?.conversationId === selectedChat._id || newMessage?.sender?._id === selectedChat._id)) {
+        try {
+          await API.put(`/chats/read/${selectedChat._id}`);
+        } catch (err) {
+          console.error("Failed to auto-mark active chat as read", err);
+        }
+      }
+
+      fetchConversations();
     };
 
-    socketRef.current.on('userBlockedStatusChanged', handleBlockStatusChanged);
-    socketRef.current.on('blockUpdate', handleBlockStatusChanged);
+    socketRef.current.on('getMessage', handleMessageUpdate);
+    socketRef.current.on('userBlockedStatusChanged', handleMessageUpdate);
 
     return () => {
       if (socketRef.current) {
-        socketRef.current.off('userBlockedStatusChanged', handleBlockStatusChanged);
-        socketRef.current.off('blockUpdate', handleBlockStatusChanged);
+        socketRef.current.off('getMessage', handleMessageUpdate);
+        socketRef.current.off('userBlockedStatusChanged', handleMessageUpdate);
       }
     };
-  }, [socketRef, authUser]);
+  }, [socketRef, selectedChat]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -671,140 +62,194 @@ export default function ChatsTab({ selectedChat, setSelectedChat, authUser, sock
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSelectChat = (friend) => {
-    setSelectedChat(friend);
+  const handleSelectChat = async (chat, otherMember) => {
+    setChatList(prev => prev.map(c => {
+      if (c._id === chat._id) {
+        return {
+          ...c,
+          unreadCounts: { ...c.unreadCounts, [authUser._id]: 0 },
+          unreadCount: 0
+        };
+      }
+      return c;
+    }));
+
+    try {
+      await API.put(`/chats/read/${chat._id}`);
+    } catch (err) {
+      console.error("Failed to mark chat as read", err);
+    }
+
+    setSelectedChat({
+      ...chat,
+      _id: otherMember._id || chat._id,
+      name: otherMember.name || chat.chatName,
+      profilePic: otherMember.profilePic,
+      username: otherMember.username
+    });
     setActiveMenuId(null);
   };
 
-  const handleDeleteChat = async (friendId, e) => {
+  const handleDeleteChat = async (conversationId, e) => {
     e.stopPropagation();
     try {
-      await API.put(`/chats/hide-chat/${friendId}`).catch(() => {});
-      setFriendsList(prev => prev.filter(f => f._id !== friendId));
+      await API.put(`/chats/hide-chat/${conversationId}`);
+      setChatList(prev => prev.filter(c => c._id !== conversationId));
       setActiveMenuId(null);
-      if (selectedChat?._id === friendId) {
+      if (selectedChat?._id === conversationId) {
         setSelectedChat(null);
       }
     } catch (err) {
-      console.error("Failed to delete chat from list", err);
+      console.error("Failed to hide chat", err);
     }
   };
 
-  const filteredChats = friendsList.filter(friend => 
-    friend.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    friend.username?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getOtherMember = (chat) => {
+    if (!chat.members || !Array.isArray(chat.members)) return {};
+    
+    const found = chat.members.find(m => {
+      const mId = typeof m === 'object' ? (m._id?.toString() || m.id?.toString()) : m?.toString();
+      return mId && mId !== authUser?._id?.toString();
+    });
+
+    if (typeof found === 'string') {
+      return { _id: found, name: 'User', username: '' };
+    }
+    return found || {};
+  };
+
+  const uniqueChats = (chatList || []).reduce((acc, current) => {
+    const otherMember = getOtherMember(current);
+    if (!otherMember._id || otherMember._id === authUser?._id?.toString()) return acc;
+
+    const targetId = otherMember._id.toString();
+    if (!acc.some(item => {
+      const itemOther = getOtherMember(item);
+      return itemOther._id?.toString() === targetId;
+    })) {
+      acc.push(current);
+    }
+    return acc;
+  }, []);
+
+  const filteredChats = uniqueChats.filter(chat => {
+    const otherMember = getOtherMember(chat);
+    const name = otherMember?.name || chat.chatName || '';
+    const username = otherMember?.username || '';
+    return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           username.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   if (viewingProfileUser) {
     return <UserProfileTab user={viewingProfileUser} onBack={() => setViewingProfileUser(null)} />;
   }
 
   return (
-    <div className="w-full flex-1 sm:w-[350px] lg:w-[380px] flex flex-col h-full border-r border-gray-200 bg-white relative">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-        <h2 className="text-xl font-bold text-gray-800">Chats</h2>
-        <button className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition">
-          <FiEdit className="w-4 h-4 text-gray-700" />
+    <div className="w-full flex-1 sm:w-[350px] lg:w-[380px] flex flex-col h-full border-r border-blue-900/45 bg-gradient-to-b from-[#0B132B] via-[#1C2541] to-[#0B132B] relative select-none font-sans text-white">
+      
+      {/* টপ হেডার (গ্লাস ইফেক্ট ও ডিপ কালার) */}
+      <div className="flex items-center justify-between px-6 py-4 bg-[#1C2541]/90 backdrop-blur-md border-b border-blue-900/50 shadow-lg">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-2.5 h-6 bg-gradient-to-b from-[#00C6FF] to-[#0084FF] rounded-full shadow-[0_0_10px_#0084FF]"></div>
+          <h2 className="text-lg font-black bg-gradient-to-r from-[#00C6FF] via-[#4CC9F0] to-[#0084FF] bg-clip-text text-transparent tracking-tight">
+            Chats
+          </h2>
+        </div>
+        <button className="p-2.5 bg-[#0B132B] hover:bg-blue-950/60 rounded-full text-[#00C6FF] transition shadow-md cursor-pointer border border-blue-900/50">
+          <FiEdit className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="px-4 py-2">
-        <div className="flex items-center bg-gray-100 rounded-full px-4 py-2 space-x-2">
-          <FiSearch className="w-4 h-4 text-gray-400" />
+      {/* সার্চ বার */}
+      <div className="px-4 py-3">
+        <div className="flex items-center bg-[#0B132B] border border-blue-900/60 rounded-full px-4 py-2 space-x-2 shadow-inner focus-within:border-cyan-400/50 transition">
+          <FiSearch className="w-4 h-4 text-cyan-400" />
           <input 
             type="text" 
             placeholder="Search Messenger" 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-transparent w-full focus:outline-none text-sm text-gray-700"
+            className="bg-transparent w-full focus:outline-none text-xs text-white placeholder-slate-400 font-medium"
           />
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto divide-y divide-gray-50" ref={menuRef}>
+      {/* চ্যাট লিস্ট */}
+      <div className="flex-1 overflow-y-auto space-y-1.5 p-3 custom-scrollbar" ref={menuRef}>
         {loading ? (
-          <div className="text-center text-gray-400 text-sm mt-10">Loading chats...</div>
+          <div className="text-center text-cyan-300/70 text-xs mt-10 font-medium">Loading chats...</div>
         ) : filteredChats.length === 0 ? (
-          <div className="text-center text-gray-400 text-sm mt-10 px-4">
+          <div className="text-center text-cyan-300/70 text-xs mt-10 px-4 font-medium">
             No chats yet. Connect with friends to start chatting!
           </div>
         ) : (
-          filteredChats.map((friend) => {
-            const isBlocked = myBlockedList.includes(friend._id); // চেক করা ইউজার ব্লক করা কি না
+          filteredChats.map((chat) => {
+            const otherMember = getOtherMember(chat);
+            const isSelected = selectedChat?._id === otherMember._id || selectedChat?._id === chat._id;
+            const isUnread = chat.unreadCount > 0 && !isSelected;
 
             return (
               <div 
-                key={friend._id} 
-                onClick={() => handleSelectChat(friend)}
-                className={`flex items-center justify-between px-4 py-3 hover:bg-gray-100 cursor-pointer transition relative ${selectedChat?._id === friend._id ? 'bg-gray-100' : ''}`}
+                key={chat._id} 
+                onClick={() => handleSelectChat(chat, otherMember)}
+                className={`flex items-center justify-between px-3.5 py-3 rounded-2xl cursor-pointer transition relative border ${isSelected ? 'bg-[#0B132B] border-cyan-500/40 shadow-inner' : 'bg-[#1C2541]/70 hover:bg-[#1C2541] border-blue-900/30'}`}
               >
                 <div className="flex items-center space-x-3 overflow-hidden flex-1">
                   <div className="relative flex-shrink-0">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg bg-gradient-to-br from-blue-400 to-indigo-600 overflow-hidden">
-                      {friend.profilePic ? (
-                        <img src={friend.profilePic} alt={friend.name} className="w-full h-full object-cover" />
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-base bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] overflow-hidden shadow-md">
+                      {otherMember.profilePic ? (
+                        <img src={otherMember.profilePic} alt={otherMember.name} className="w-full h-full object-cover" />
                       ) : (
-                        <span>{friend.name?.charAt(0).toUpperCase()}</span>
+                        <span>{otherMember.name?.charAt(0).toUpperCase() || 'U'}</span>
                       )}
                     </div>
-                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
+                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-400 border-2 border-[#1C2541] rounded-full shadow-[0_0_6px_#34D399]"></span>
                   </div>
 
                   <div className="overflow-hidden flex-1 min-w-0">
-                    <h4 className="text-sm font-semibold text-gray-800 truncate">
-                      {friend.name}
+                    <h4 className={`text-xs truncate ${isUnread ? 'font-black text-white' : 'font-extrabold text-slate-100'}`}>
+                      {otherMember.name || chat.chatName || 'User'}
                     </h4>
-                    <p className="text-xs text-gray-500 truncate">
-                      @{friend.username} • Tap to chat
+                    <p className={`text-[11px] truncate mt-0.5 ${isUnread ? 'font-bold text-cyan-200' : 'text-cyan-300/70 font-medium'}`}>
+                      {chat.lastMessage?.text || `@${otherMember.username || ''}`}
                     </p>
                   </div>
                 </div>
+
+                {/* আনরিড কাউন্ট ব্যাজ */}
+                {isUnread && (
+                  <span className="w-5 h-5 bg-gradient-to-r from-[#0084FF] to-[#00C6FF] text-white rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 ml-2 shadow-md">
+                    {chat.unreadCount}
+                  </span>
+                )}
 
                 <div className="relative flex items-center space-x-1 flex-shrink-0 ml-2">
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      setActiveMenuId(activeMenuId === friend._id ? null : friend._id);
+                      setActiveMenuId(activeMenuId === chat._id ? null : chat._id);
                     }}
-                    className="p-1.5 hover:bg-gray-200 rounded-full text-gray-500 transition"
+                    className="p-2 hover:bg-[#0B132B] rounded-full text-cyan-300/70 hover:text-cyan-200 transition cursor-pointer"
                   >
                     <FiMoreVertical className="w-4 h-4" />
                   </button>
 
-                  {activeMenuId === friend._id && (
-                    <div className="absolute right-0 top-8 z-50 w-44 bg-white border border-gray-200 shadow-xl rounded-lg py-1 text-xs text-gray-700">
+                  {activeMenuId === chat._id && (
+                    <div className="absolute right-0 top-8 z-50 w-40 bg-[#1C2541] border border-blue-500/30 shadow-2xl rounded-2xl py-1 text-xs text-white">
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          setViewingProfileUser(friend);
+                          setViewingProfileUser(otherMember);
                           setActiveMenuId(null);
                         }} 
-                        className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2"
+                        className="w-full text-left px-3.5 py-2.5 hover:bg-[#0B132B] flex items-center gap-2 cursor-pointer transition"
                       >
-                        <FiEye className="w-3.5 h-3.5 text-blue-600" /> View Profile
+                        <FiEye className="w-3.5 h-3.5 text-[#00C6FF]" /> View Profile
                       </button>
 
-                      {/* রিইউজেবল BlockButton কম্পোনেন্ট */}
-                       {/* <BlockButton 
-  targetUserId={friend._id}
-  isBlocked={isBlocked}
-  socketRef={socketRef}
-  onBlockToggle={(newBlockState) => {
-    // ইনস্ট্যান্ট লোকাল লিস্ট আপডেট
-    setMyBlockedList(prev => 
-      newBlockState 
-        ? [...prev, friend._id] 
-        : prev.filter(id => id !== friend._id)
-    );
-    
-    // সাথে সাথে প্রফাইল ও চ্যাট লিস্ট রিফেচ করা
-    fetchChatsAndProfile();
-    setActiveMenuId(null);
-  }}
-/> */}
                       <button 
-                        onClick={(e) => handleDeleteChat(friend._id, e)} 
-                        className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2"
+                        onClick={(e) => handleDeleteChat(chat._id, e)} 
+                        className="w-full text-left px-3.5 py-2.5 hover:bg-red-950/50 text-red-400 flex items-center gap-2 cursor-pointer transition"
                       >
                         <FiTrash2 className="w-3.5 h-3.5" /> Delete Chat
                       </button>

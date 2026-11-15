@@ -1,201 +1,40 @@
-// import React, { useState, useEffect } from 'react';
-// import { FiUser, FiMail, FiPhone, FiCalendar, FiAtSign, FiArrowLeft } from 'react-icons/fi';
-// import API from '../services/api';
-
-// export default function UserProfileTab({ user, onBack }) {
-//   const [userData, setUserData] = useState(user);
-//   const [friendsList, setFriendsList] = useState([]);
-
-//   // ১. নির্দিষ্ট ইউজারের লেটেস্ট ও ফুল প্রফাইল ডাটা ব্যাকএন্ড থেকে ফেচ করা (যাতে phone, dob, gender মিস না হয়)
-//   useEffect(() => {
-//     const fetchFullProfile = async () => {
-//       try {
-//         if (user && user._id) {
-//           const res = await API.get(`/users/profile/${user._id}`);
-//           if (res.data) {
-//             setUserData(res.data);
-//           }
-//         }
-//       } catch (err) {
-//         console.error("Failed to fetch full user profile", err);
-//       }
-//     };
-
-//     const fetchUserFriends = async () => {
-//       try {
-//         const res = await API.get('/friends/my-friends'); 
-//         setFriendsList(res.data);
-//       } catch (err) {
-//         console.error("Failed to fetch friends list", err);
-//       }
-//     };
-
-//     if (user) {
-//       fetchFullProfile();
-//       fetchUserFriends();
-//     }
-//   }, [user]);
-
-//   if (!userData) return null;
-
-//   return (
-//     <div className="w-full flex-1 sm:w-[350px] lg:w-[380px] flex flex-col h-full border-r border-gray-200 bg-white">
-      
-//       {/* প্রফাইল হেডার ও ব্যাক বাটন */}
-//       <div className="flex items-center space-x-3 px-4 py-3 border-b border-gray-100">
-//         <button 
-//           onClick={onBack}
-//           className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition"
-//           title="Back"
-//         >
-//           <FiArrowLeft className="w-4 h-4 text-gray-700" />
-//         </button>
-//         <h2 className="text-xl font-bold text-gray-800">{userData.name}'s Profile</h2>
-//       </div>
-
-//       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        
-//         {/* প্রোফাইল কার্ড */}
-//         <div className="flex flex-col items-center bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-3xl border border-blue-100 shadow-sm">
-//           <div className="w-24 h-24 bg-white text-blue-600 rounded-full flex items-center justify-center text-3xl font-black shadow-lg border-4 border-white overflow-hidden mb-3">
-//             {userData.profilePic ? (
-//               <img src={userData.profilePic} alt={userData.name} className="w-full h-full object-cover" />
-//             ) : (
-//               <span>{userData.name ? userData.name.charAt(0).toUpperCase() : <FiUser />}</span>
-//             )}
-//           </div>
-
-//           <h3 className="text-lg font-extrabold text-gray-800">{userData.name}</h3>
-//           <p className="text-xs text-blue-600 font-semibold bg-white px-3 py-1 rounded-full mt-1 shadow-sm">
-//             @{userData.username}
-//           </p>
-//         </div>
-
-//         {/* ফ্রেন্ডস লিস্ট সেকশন */}
-//         <div className="space-y-3">
-//           <div className="flex items-center justify-between px-1">
-//             <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-//               Friends ({friendsList.length})
-//             </h4>
-//           </div>
-
-//           {friendsList.length === 0 ? (
-//             <p className="text-xs text-gray-400 px-1">No friends to show.</p>
-//           ) : (
-//             <div className="space-y-2">
-//               {friendsList.map(friend => (
-//                 <div key={friend._id} className="flex items-center space-x-3 p-2.5 bg-gray-50 rounded-2xl border border-gray-100">
-//                   <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold overflow-hidden">
-//                     {friend.profilePic ? (
-//                       <img src={friend.profilePic} alt={friend.name} className="w-full h-full object-cover" />
-//                     ) : (
-//                       <span>{friend.name.charAt(0).toUpperCase()}</span>
-//                     )}
-//                   </div>
-//                   <div>
-//                     <h5 className="text-xs font-bold text-gray-800">{friend.name}</h5>
-//                     <p className="text-[10px] text-gray-400">@{friend.username}</p>
-//                   </div>
-//                 </div>
-//               ))}
-//             </div>
-//           )}
-//         </div>
-
-//         {/* অ্যাকাউন্ট ডিটেইলস (সঠিক ডাটা সহ) */}
-//         <div className="space-y-3">
-//           <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 px-1">Account Details</h4>
-          
-//           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-//             <div className="p-2.5 bg-blue-100 text-blue-600 rounded-xl"><FiAtSign className="w-4 h-4" /></div>
-//             <div>
-//               <p className="text-[10px] text-gray-400 font-semibold uppercase">Username</p>
-//               <p className="text-xs font-bold text-gray-800">@{userData.username || 'N/A'}</p>
-//             </div>
-//           </div>
-
-//           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-//             <div className="p-2.5 bg-indigo-100 text-indigo-600 rounded-xl"><FiMail className="w-4 h-4" /></div>
-//             <div>
-//               <p className="text-[10px] text-gray-400 font-semibold uppercase">Email</p>
-//               <p className="text-xs font-bold text-gray-800 truncate max-w-[220px]">{userData.email || 'N/A'}</p>
-//             </div>
-//           </div>
-
-//           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-//             <div className="p-2.5 bg-green-100 text-green-600 rounded-xl"><FiPhone className="w-4 h-4" /></div>
-//             <div>
-//               <p className="text-[10px] text-gray-400 font-semibold uppercase">Phone</p>
-//               <p className="text-xs font-bold text-gray-800">{userData.phone || 'N/A'}</p>
-//             </div>
-//           </div>
-
-//           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-//             <div className="p-2.5 bg-purple-100 text-purple-600 rounded-xl"><FiCalendar className="w-4 h-4" /></div>
-//             <div>
-//               <p className="text-[10px] text-gray-400 font-semibold uppercase">Date of Birth</p>
-//               <p className="text-xs font-bold text-gray-800">
-//                 {userData.dob ? new Date(userData.dob).toLocaleDateString() : 'N/A'}
-//               </p>
-//             </div>
-//           </div>
-
-//           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-//             <div className="p-2.5 bg-pink-100 text-pink-600 rounded-xl"><FiUser className="w-4 h-4" /></div>
-//             <div>
-//               <p className="text-[10px] text-gray-400 font-semibold uppercase">Gender</p>
-//               <p className="text-xs font-bold text-gray-800 capitalize">{userData.gender || 'N/A'}</p>
-//             </div>
-//           </div>
-//         </div>
-
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
 import React, { useState, useEffect } from 'react';
-import { FiUser, FiMail, FiPhone, FiCalendar, FiAtSign, FiArrowLeft, FiUserPlus, FiCheck, FiMessageSquare } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiCalendar, FiArrowLeft, FiUserPlus, FiCheck, FiMessageSquare, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import API from '../services/api';
 
-export default function UserProfileTab({ user, onBack, onStartChat }) {
+export default function UserProfileTab({ user, onBack, onStartChat, onSelectUser }) {
   const [userData, setUserData] = useState(user);
-  const [friendsList, setFriendsList] = useState([]);
-  const [myFriendsIds, setMyFriendsIds] = useState([]);
+  const [friendsList, setFriendsList] = useState([]);       // নির্দিষ্ট ইউজারের বন্ধুদের তালিকা (বক্সে দেখানোর জন্য)
+  const [myFriendsIds, setMyFriendsIds] = useState([]);   // আপনার নিজের ফ্রেন্ড আইডিগুলো (বাটন ঠিক রাখার জন্য)
   const [sentRequests, setSentRequests] = useState([]);
+  const [showAllFriends, setShowAllFriends] = useState(false);
 
-  // নির্দিষ্ট ইউজারের ফুল প্রফাইল এবং ফ্রেন্ড লিস্ট ফেচ করা
   useEffect(() => {
-    const fetchFullProfile = async () => {
+    const fetchProfileAndFriendsData = async () => {
       try {
         if (user && user._id) {
-          const res = await API.get(`/users/profile/${user._id}`);
-          if (res.data) {
-            setUserData(res.data);
+          // ১. যার প্রোফাইলে গেছেন তার ফুল প্রোফাইল ফেচ
+          const profileRes = await API.get(`/users/profile/${user._id}`);
+          if (profileRes.data) {
+            setUserData(profileRes.data);
           }
+
+          // ২. নির্দিষ্ট ঐ ইউজারের ফ্রেন্ড লিস্ট ফেচ (ডানপাশের সেকশনে দেখানোর জন্য)
+          const userFriendsRes = await API.get(`/friends/user/${user._id}`); 
+          setFriendsList(userFriendsRes.data || []);
+          
+          // ৩. সবচেয়ে গুরুত্বপূর্ণ: লগইন করা নিজের ফ্রেন্ড লিস্ট ফেচ (Message বা Add Friend বাটন সঠিক রাখার জন্য)
+          const myFriendsRes = await API.get('/friends/my-friends');
+          const currentMyFriendIds = (myFriendsRes.data || []).map(friend => friend._id.toString());
+          setMyFriendsIds(currentMyFriendIds);
         }
       } catch (err) {
-        console.error("Failed to fetch full user profile", err);
-      }
-    };
-
-    const fetchUserFriends = async () => {
-      try {
-        const res = await API.get('/friends/my-friends'); 
-        setFriendsList(res.data);
-        // আইডিগুলোর টাইপজনিত সমস্যা এড়াতে স্ট্রিং এ রূপান্তর করে রাখা হলো
-        const friendIds = res.data.map(friend => friend._id.toString());
-        setMyFriendsIds(friendIds);
-      } catch (err) {
-        console.error("Failed to fetch friends list", err);
+        console.error("Failed to fetch user profile or friends", err);
       }
     };
 
     if (user) {
-      fetchFullProfile();
-      fetchUserFriends();
+      fetchProfileAndFriendsData();
     }
   }, [user]);
 
@@ -211,44 +50,86 @@ export default function UserProfileTab({ user, onBack, onStartChat }) {
 
   if (!userData) return null;
 
-  // নিখুঁতভাবে চেক করা যে ইউজারটি অলরেডি ফ্রেন্ড কি না (.toString() ব্যবহার করে)
+  // এখন এটি নিখুঁতভাবে আপনার নিজের ফ্রেন্ড লিস্টের সাথে চেক করবে
   const isAlreadyFriend = myFriendsIds.includes(userData._id?.toString());
   const isSent = sentRequests.includes(userData._id);
+  const displayedFriends = showAllFriends ? friendsList : friendsList.slice(0, 3);
 
   return (
-    <div className="w-full flex-1 sm:w-[350px] lg:w-[380px] flex flex-col h-full border-r border-gray-200 bg-white">
+    <div className="w-full flex-1 sm:w-[420px] lg:w-[480px] flex flex-col h-full border-r border-blue-900/40 bg-gradient-to-b from-[#0B132B] via-[#1C2541] to-[#0B132B] relative select-none font-sans text-white">
       
       {/* প্রফাইল হেডার ও ব্যাক বাটন */}
-      <div className="flex items-center space-x-3 px-4 py-3 border-b border-gray-100">
-        <button 
-          onClick={onBack}
-          className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition"
-          title="Back"
-        >
-          <FiArrowLeft className="w-4 h-4 text-gray-700" />
-        </button>
-        <h2 className="text-xl font-bold text-gray-800">{userData.name}'s Profile</h2>
+      <div className="flex items-center justify-between px-6 py-4 bg-[#1C2541]/90 backdrop-blur-md border-b border-blue-900/50 shadow-lg">
+        <div className="flex items-center space-x-3">
+          <button 
+            onClick={onBack}
+            className="p-2 bg-[#0B132B] hover:bg-blue-950 text-cyan-300 rounded-full border border-blue-900/60 transition cursor-pointer"
+            title="Back"
+          >
+            <FiArrowLeft className="w-4 h-4" />
+          </button>
+          <h2 className="text-lg font-black bg-gradient-to-r from-[#00C6FF] via-[#4CC9F0] to-[#0084FF] bg-clip-text text-transparent tracking-tight truncate max-w-[220px]">
+            {userData.name}'s Profile
+          </h2>
+        </div>
+        <span className="text-xs font-bold text-cyan-300 bg-cyan-950/80 px-3 py-1 rounded-full border border-cyan-500/40 flex items-center gap-1.5 shadow-[0_0_10px_rgba(0,198,255,0.2)]">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34D399]"></span> User
+        </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
         
-        {/* প্রোফাইল কার্ড */}
-        <div className="flex flex-col items-center bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-3xl border border-blue-100 shadow-sm">
-          <div className="w-24 h-24 bg-white text-blue-600 rounded-full flex items-center justify-center text-3xl font-black shadow-lg border-4 border-white overflow-hidden mb-3">
-            {userData.profilePic ? (
-              <img src={userData.profilePic} alt={userData.name} className="w-full h-full object-cover" />
-            ) : (
-              <span>{userData.name ? userData.name.charAt(0).toUpperCase() : <FiUser />}</span>
-            )}
+        {/* ১. প্রধান প্রোফাইল কার্ড */}
+        <div className="bg-gradient-to-br from-[#1C2541] via-[#24305E] to-[#131B35] rounded-3xl border border-blue-500/30 shadow-2xl p-5 relative overflow-hidden">
+          
+          <div className="absolute -top-16 -right-16 w-44 h-44 bg-gradient-to-br from-[#0084FF]/30 to-[#00C6FF]/30 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-5 relative z-10">
+            
+            {/* বড় প্রোফাইল ছবি */}
+            <div className="relative flex-shrink-0">
+              <div className="p-1.5 rounded-3xl bg-gradient-to-tr from-[#0084FF] via-[#00C6FF] to-[#7209B7] shadow-xl">
+                <div className="w-36 h-36 sm:w-40 sm:h-40 rounded-[22px] flex items-center justify-center text-6xl font-black bg-[#0B132B] overflow-hidden">
+                  {userData.profilePic ? (
+                    <img src={userData.profilePic} alt={userData.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] text-white flex items-center justify-center">
+                      {userData.name ? userData.name.charAt(0).toUpperCase() : <FiUser />}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ডানপাশে নাম, ইউজারনেম ও কন্টাক্ট ইনফো */}
+            <div className="flex-1 w-full text-center sm:text-left space-y-2.5 min-w-0">
+              <div>
+                <h3 className="text-2xl font-black text-white tracking-tight truncate">{userData.name}</h3>
+                <span className="inline-block text-xs font-extrabold text-cyan-200 bg-gradient-to-r from-[#0084FF]/60 to-[#00C6FF]/60 px-3 py-0.5 rounded-full mt-1 border border-cyan-400/30 shadow-inner">
+                  @{userData.username || 'username'}
+                </span>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-center sm:justify-start gap-2.5 bg-[#0B132B]/70 px-3 py-2 rounded-xl border border-blue-900/60 shadow-inner">
+                  <div className="p-1.5 bg-blue-500/20 text-[#00C6FF] rounded-lg flex-shrink-0">
+                    <FiMail className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-200 truncate">{userData.email || 'No email'}</span>
+                </div>
+
+                <div className="flex items-center justify-center sm:justify-start gap-2.5 bg-[#0B132B]/70 px-3 py-2 rounded-xl border border-blue-900/60 shadow-inner">
+                  <div className="p-1.5 bg-cyan-500/20 text-cyan-400 rounded-lg flex-shrink-0">
+                    <FiPhone className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-200 truncate">{userData.phone || 'No phone'}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <h3 className="text-lg font-extrabold text-gray-800">{userData.name}</h3>
-          <p className="text-xs text-blue-600 font-semibold bg-white px-3 py-1 rounded-full mt-1 shadow-sm">
-            @{userData.username}
-          </p>
-
-          {/* ডাইনামিক অ্যাকশন বাটন: ফ্রেন্ড হলে Message, না হলে Add Friend */}
-          <div className="w-full mt-4 space-y-2">
+          {/* ডাইনামিক অ্যাকশন বাটন */}
+          <div className="w-full mt-4 pt-4 border-t border-blue-500/20 relative z-10">
             {isAlreadyFriend ? (
               <button 
                 onClick={() => {
@@ -256,7 +137,7 @@ export default function UserProfileTab({ user, onBack, onStartChat }) {
                     onStartChat(userData);
                   }
                 }}
-                className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition shadow-sm cursor-pointer"
+                className="w-full py-3 bg-gradient-to-r from-[#0084FF] to-[#00C6FF] hover:opacity-90 text-white font-black text-xs rounded-2xl flex items-center justify-center space-x-2 transition shadow-lg cursor-pointer"
               >
                 <FiMessageSquare className="w-4 h-4" />
                 <span>Message</span>
@@ -266,7 +147,7 @@ export default function UserProfileTab({ user, onBack, onStartChat }) {
                 {isSent ? (
                   <button 
                     disabled
-                    className="w-full py-2 bg-green-50 text-green-600 font-semibold text-xs rounded-xl flex items-center justify-center space-x-1.5 cursor-default"
+                    className="w-full py-3 bg-emerald-950/60 text-emerald-400 font-black text-xs rounded-2xl flex items-center justify-center space-x-2 border border-emerald-500/30 cursor-default shadow-inner"
                   >
                     <FiCheck className="w-4 h-4" />
                     <span>Request Sent</span>
@@ -274,7 +155,7 @@ export default function UserProfileTab({ user, onBack, onStartChat }) {
                 ) : (
                   <button 
                     onClick={() => handleSendRequest(userData._id)}
-                    className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 font-semibold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition"
+                    className="w-full py-3 bg-gradient-to-r from-[#0084FF]/20 to-[#00C6FF]/20 hover:from-[#0084FF]/30 hover:to-[#00C6FF]/30 text-[#00C6FF] font-black text-xs rounded-2xl flex items-center justify-center space-x-2 transition border border-cyan-500/30 shadow-md cursor-pointer"
                   >
                     <FiUserPlus className="w-4 h-4" />
                     <span>Add Friend</span>
@@ -283,84 +164,91 @@ export default function UserProfileTab({ user, onBack, onStartChat }) {
               </div>
             )}
           </div>
-        </div>
 
-        {/* ফ্রেন্ডস লিস্ট সেকশন */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-              Friends ({friendsList.length})
-            </h4>
-          </div>
-
-          {friendsList.length === 0 ? (
-            <p className="text-xs text-gray-400 px-1">No friends to show.</p>
-          ) : (
-            <div className="space-y-2">
-              {friendsList.map(friend => (
-                <div key={friend._id} className="flex items-center space-x-3 p-2.5 bg-gray-50 rounded-2xl border border-gray-100">
-                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold overflow-hidden">
-                    {friend.profilePic ? (
-                      <img src={friend.profilePic} alt={friend.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span>{friend.name.charAt(0).toUpperCase()}</span>
-                    )}
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-gray-800">{friend.name}</h5>
-                    <p className="text-[10px] text-gray-400">@{friend.username}</p>
-                  </div>
-                </div>
-              ))}
+          {/* নিচের স্ট্যাটাস বার */}
+          <div className="grid grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-blue-500/20 relative z-10">
+            <div className="p-2.5 bg-[#0B132B]/80 rounded-2xl border border-blue-900/60 text-center shadow-inner">
+              <p className="text-[10px] text-cyan-400 font-extrabold uppercase tracking-wider">Friends</p>
+              <p className="text-sm font-black text-[#00C6FF] mt-0.5">{friendsList.length}</p>
             </div>
-          )}
-        </div>
 
-        {/* অ্যাকাউন্ট ডিটেইলস */}
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 px-1">Account Details</h4>
-          
-          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-            <div className="p-2.5 bg-blue-100 text-blue-600 rounded-xl"><FiAtSign className="w-4 h-4" /></div>
-            <div>
-              <p className="text-[10px] text-gray-400 font-semibold uppercase">Username</p>
-              <p className="text-xs font-bold text-gray-800">@{userData.username || 'N/A'}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-            <div className="p-2.5 bg-indigo-100 text-indigo-600 rounded-xl"><FiMail className="w-4 h-4" /></div>
-            <div>
-              <p className="text-[10px] text-gray-400 font-semibold uppercase">Email</p>
-              <p className="text-xs font-bold text-gray-800 truncate max-w-[220px]">{userData.email || 'N/A'}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-            <div className="p-2.5 bg-green-100 text-green-600 rounded-xl"><FiPhone className="w-4 h-4" /></div>
-            <div>
-              <p className="text-[10px] text-gray-400 font-semibold uppercase">Phone</p>
-              <p className="text-xs font-bold text-gray-800">{userData.phone || 'N/A'}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-            <div className="p-2.5 bg-purple-100 text-purple-600 rounded-xl"><FiCalendar className="w-4 h-4" /></div>
-            <div>
-              <p className="text-[10px] text-gray-400 font-semibold uppercase">Date of Birth</p>
-              <p className="text-xs font-bold text-gray-800">
+            <div className="p-2.5 bg-[#0B132B]/80 rounded-2xl border border-blue-900/60 text-center shadow-inner">
+              <p className="text-[10px] text-cyan-400 font-extrabold uppercase tracking-wider">Birth Date</p>
+              <p className="text-xs font-extrabold text-slate-200 mt-0.5 truncate">
                 {userData.dob ? new Date(userData.dob).toLocaleDateString() : 'N/A'}
               </p>
             </div>
-          </div>
 
-          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-            <div className="p-2.5 bg-pink-100 text-pink-600 rounded-xl"><FiUser className="w-4 h-4" /></div>
-            <div>
-              <p className="text-[10px] text-gray-400 font-semibold uppercase">Gender</p>
-              <p className="text-xs font-bold text-gray-800 capitalize">{userData.gender || 'N/A'}</p>
+            <div className="p-2.5 bg-[#0B132B]/80 rounded-2xl border border-blue-900/60 text-center shadow-inner">
+              <p className="text-[10px] text-cyan-400 font-extrabold uppercase tracking-wider">Gender</p>
+              <p className="text-xs font-extrabold text-slate-200 capitalize mt-0.5">
+                {userData.gender || 'N/A'}
+              </p>
             </div>
           </div>
+        </div>
+
+        {/* ২. ফ্রেন্ডস লিস্ট সেকশন */}
+        <div className="bg-[#1C2541] rounded-3xl border border-blue-500/30 shadow-xl p-5 space-y-3.5">
+          <div className="flex items-center justify-between px-1">
+            <h4 className="text-xs font-black uppercase tracking-wider text-cyan-300 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#0084FF] shadow-[0_0_6px_#0084FF]"></span>
+              Friends ({friendsList.length})
+            </h4>
+            {friendsList.length > 3 && (
+              <button 
+                onClick={() => setShowAllFriends(!showAllFriends)}
+                className="text-xs font-extrabold text-[#00C6FF] hover:text-cyan-200 flex items-center gap-1 transition cursor-pointer"
+              >
+                {showAllFriends ? (
+                  <>Show Less <FiChevronUp className="w-3.5 h-3.5" /></>
+                ) : (
+                  <>See All <FiChevronDown className="w-3.5 h-3.5" /></>
+                )}
+              </button>
+            )}
+          </div>
+
+          {friendsList.length === 0 ? (
+            <p className="text-xs text-slate-400 px-1 py-2 font-medium">কোনো বন্ধু পাওয়া যায়নি।</p>
+          ) : (
+            <div className="space-y-2.5">
+              {displayedFriends.map(friend => (
+                <div 
+                  key={friend._id} 
+                  onClick={() => onSelectUser && onSelectUser(friend)}
+                  className="flex items-center justify-between p-3 bg-[#0B132B]/60 hover:bg-[#0B132B] rounded-2xl border border-blue-900/50 cursor-pointer transition group shadow-inner"
+                >
+                  <div className="flex items-center space-x-3 overflow-hidden">
+                    <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] text-white flex items-center justify-center font-bold overflow-hidden flex-shrink-0 shadow-md">
+                      {friend.profilePic ? (
+                        <img src={friend.profilePic} alt={friend.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span>{friend.name.charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div className="overflow-hidden min-w-0">
+                      <h5 className="text-xs font-extrabold text-white truncate group-hover:text-[#00C6FF] transition">{friend.name}</h5>
+                      <p className="text-[10px] text-cyan-300/70 truncate font-semibold">@{friend.username}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {friendsList.length > 3 && (
+                <button 
+                  onClick={() => setShowAllFriends(!showAllFriends)}
+                  className="w-full py-3 bg-gradient-to-r from-[#0084FF]/20 to-[#00C6FF]/20 hover:from-[#0084FF]/30 hover:to-[#00C6FF]/30 text-[#00C6FF] font-black text-xs rounded-2xl transition border border-cyan-500/30 text-center mt-1 cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+                >
+                  {showAllFriends ? (
+                    <>Show Less <FiChevronUp className="w-4 h-4" /></>
+                  ) : (
+                    <>See All Friends ({friendsList.length}) <FiChevronDown className="w-4 h-4" /></>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
       </div>

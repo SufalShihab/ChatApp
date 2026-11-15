@@ -5,7 +5,7 @@ import io from 'socket.io-client';
 import API from '../services/api';
 import Picker from 'emoji-picker-react';
 import ChatInfoModal from './ChatInfoModal';
-import BlockButton from './BlockButton'; // নতুন রিইউজেবল ব্লক বাটন ইম্পোর্ট
+import BlockButton from './BlockButton';
 
 const SOCKET_URL = 'http://localhost:5000';
 
@@ -31,24 +31,42 @@ export default function ChatBox({ chat }) {
   const fileInputRef = useRef(null);
   const scrollRef = useRef();
 
-  // ব্লক স্ট্যাটাস চেক এবং সিঙ্ক করার ফাংশন
-const checkBlockStatuses = async () => {
+  // কনভার্সেশন থেকে সঠিক রিসিভার বা টার্গেট ইউজারের আইডি বের করার ফাংশন
+  const getTargetUserId = () => {
+    if (!chat) return null;
+    if (chat.members && Array.isArray(chat.members)) {
+      const otherMember = chat.members.find(m => {
+        const mId = typeof m === 'object' ? m._id?.toString() : m?.toString();
+        return mId !== authUser?._id?.toString();
+      });
+      if (otherMember) {
+        return typeof otherMember === 'object' ? otherMember._id : otherMember;
+      }
+    }
+    return chat._id;
+  };
+
+  const targetUserId = getTargetUserId();
+
+  // ব্লক স্ট্যাটাস চেক এবং সিঙ্ক করার নিরাপদ ফাংশন
+  const checkBlockStatuses = async () => {
     try {
-      if (!authUser || !chat?._id) return;
+      if (!authUser || !targetUserId) return;
 
-      const myProfileRes = await API.get(`/users/profile/${authUser._id}`);
-      const myBlockedList = myProfileRes.data.blockedUsers || [];
+      const myProfileRes = await API.get(`/users/profile/${authUser._id}`).catch(() => ({ data: {} }));
+      const myBlockedList = myProfileRes.data?.blockedUsers || [];
 
-      const targetProfileRes = await API.get(`/users/profile/${chat._id}`);
-      const targetBlockedList = targetProfileRes.data.blockedUsers || [];
+      const targetProfileRes = await API.get(`/users/profile/${targetUserId}`).catch(() => ({ data: {} }));
+      const targetBlockedList = targetProfileRes.data?.blockedUsers || [];
 
-      setIsBlockedByMe(myBlockedList.includes(chat._id));
+      setIsBlockedByMe(myBlockedList.includes(targetUserId));
       setIsBlockedByThem(targetBlockedList.includes(authUser._id));
     } catch (err) {
       console.error("Failed to check block statuses", err);
     }
   };
 
+  // সকেট কানেকশন একবারই ইনিশিয়ালাইজ করার জন্য
   useEffect(() => {
     socketRef.current = io(SOCKET_URL);
 
@@ -56,9 +74,41 @@ const checkBlockStatuses = async () => {
       socketRef.current.emit('addUser', authUser._id);
     }
 
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [authUser]);
+
+  // চ্যাটবক্স ওপেন থাকা অবস্থায় নতুন মেসেজ আসলে বা চ্যাট একটিভ থাকলে অটোমেটিক রিড করা
+  useEffect(() => {
+    const markCurrentChatAsRead = async () => {
+      try {
+        if (chat?._id) {
+          await API.put(`/chats/read/${chat._id}`);
+        }
+      } catch (err) {
+        console.error("Failed to mark active chat as read", err);
+      }
+    };
+
+    markCurrentChatAsRead();
+
+    const interval = setInterval(() => {
+      markCurrentChatAsRead();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [chat?._id]);
+
+  // চ্যাট বা টার্গেট ইউজার পরিবর্তন হলে কনভার্সেশন লোড ও সকেট লিসেনার সেটআপ
+  useEffect(() => {
+    if (!targetUserId || !authUser || !socketRef.current) return;
+
     const initChat = async () => {
       try {
-        const res = await API.post('/chats', { receiverId: chat._id });
+        const res = await API.post('/chats', { receiverId: targetUserId });
         const convId = res.data._id;
         setConversationId(convId);
 
@@ -70,7 +120,7 @@ const checkBlockStatuses = async () => {
         if (convId) {
           await API.put(`/messages/seen/${convId}`);
           socketRef.current.emit('markSeen', { 
-            receiverId: chat._id, 
+            receiverId: targetUserId, 
             conversationId: convId 
           });
         }
@@ -79,15 +129,27 @@ const checkBlockStatuses = async () => {
       }
     };
 
-    if (chat?._id && authUser) {
-      initChat();
-    }
+    initChat();
+
+    socketRef.current.off('getMessage');
+    socketRef.current.off('messageReacted');
+    socketRef.current.off('messageDeleted');
+    socketRef.current.off('userTyping');
+    socketRef.current.off('userBlockedStatusChanged');
+    socketRef.current.off('messagesSeen');
 
     socketRef.current.on('getMessage', (message) => {
-      setMessages(prev => [...prev, message]);
-      if (message.conversationId === conversationId) {
-        API.put(`/messages/seen/${conversationId}`).catch(() => {});
-        socketRef.current.emit('markSeen', { receiverId: chat._id, conversationId });
+      const isCurrentChat = 
+        message.conversationId === conversationId || 
+        message.sender === targetUserId || 
+        message.sender?._id === targetUserId;
+
+      if (isCurrentChat) {
+        setMessages(prev => [...prev, message]);
+        if (message.conversationId) {
+          API.put(`/messages/seen/${message.conversationId}`).catch(() => {});
+          socketRef.current.emit('markSeen', { receiverId: targetUserId, conversationId: message.conversationId });
+        }
       }
     });
 
@@ -99,8 +161,10 @@ const checkBlockStatuses = async () => {
       setMessages(prev => prev.map(msg => msg._id === deletedMessage._id ? deletedMessage : msg));
     });
 
-    socketRef.current.on('userTyping', ({ isTyping }) => {
-      setIsTyping(isTyping);
+    socketRef.current.on('userTyping', ({ isTyping, senderId }) => {
+      if (senderId === targetUserId) {
+        setIsTyping(isTyping);
+      }
     });
 
     socketRef.current.on('userBlockedStatusChanged', () => {
@@ -108,21 +172,20 @@ const checkBlockStatuses = async () => {
     });
 
     socketRef.current.on('messagesSeen', ({ conversationId: seenConvId }) => {
-      setMessages(prev => prev.map(msg => {
-        if (msg.conversationId === seenConvId && !msg.seenBy?.includes(chat._id)) {
-          return {
-            ...msg,
-            seenBy: [...(msg.seenBy || []), chat._id]
-          };
-        }
-        return msg;
-      }));
+      if (seenConvId === conversationId) {
+        setMessages(prev => prev.map(msg => {
+          if (msg.conversationId === seenConvId && !msg.seenBy?.includes(targetUserId)) {
+            return {
+              ...msg,
+              seenBy: [...(msg.seenBy || []), targetUserId]
+            };
+          }
+          return msg;
+        }));
+      }
     });
 
-    return () => {
-      socketRef.current.disconnect();
-    };
-  }, [chat._id, authUser, conversationId]);
+  }, [targetUserId, authUser, conversationId]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -138,7 +201,6 @@ const checkBlockStatuses = async () => {
     setNewMessage((prev) => prev + emojiData.emoji);
   };
 
-  // মেসেজ পাঠানো
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (isBlockedByMe || isBlockedByThem) {
@@ -151,7 +213,7 @@ const checkBlockStatuses = async () => {
     try {
       const formData = new FormData();
       formData.append('conversationId', conversationId);
-      formData.append('receiverId', chat._id);
+      formData.append('receiverId', targetUserId);
       formData.append('text', newMessage);
       if (replyingTo) {
         formData.append('replyTo', replyingTo._id);
@@ -167,7 +229,7 @@ const checkBlockStatuses = async () => {
       const savedMessage = res.data;
 
       socketRef.current.emit('sendMessage', {
-        receiverId: chat._id,
+        receiverId: targetUserId,
         message: savedMessage
       });
 
@@ -188,7 +250,7 @@ const checkBlockStatuses = async () => {
       const updatedMessage = res.data;
 
       socketRef.current.emit('deleteMessage', {
-        receiverId: chat._id,
+        receiverId: targetUserId,
         message: updatedMessage
       });
 
@@ -210,7 +272,7 @@ const checkBlockStatuses = async () => {
       const updatedMsg = res.data;
 
       socketRef.current.emit('reactMessage', {
-        receiverId: chat._id,
+        receiverId: targetUserId,
         message: updatedMsg
       });
 
@@ -224,47 +286,62 @@ const checkBlockStatuses = async () => {
 
   if (!chat) return null;
 
+  const getDisplayUser = () => {
+    if (chat.members && Array.isArray(chat.members)) {
+      const other = chat.members.find(m => {
+        const mId = typeof m === 'object' ? m._id?.toString() : m?.toString();
+        return mId !== authUser?._id?.toString();
+      });
+      if (typeof other === 'object' && other !== null) return other;
+    }
+    return chat;
+  };
+
+  const displayUser = getDisplayUser();
+
   return (
-    <div className="flex flex-col h-full w-full bg-white relative">
-      {/* চ্যাট হেডার */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 shadow-sm bg-white">
+    <div className="flex flex-col h-full w-full bg-gradient-to-b from-[#0B132B] via-[#1C2541] to-[#0B132B] text-white relative select-none font-sans">
+      
+      {/* টপ হেডার (গ্লাস ইফেক্ট ও ডিপ কালার) */}
+      <div className="flex items-center justify-between px-6 py-4 bg-[#1C2541]/90 backdrop-blur-md border-b border-blue-900/50 shadow-lg">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold overflow-hidden">
-            {chat.profilePic ? (
-              <img src={chat.profilePic} alt={chat.name} className="w-full h-full object-cover" />
+          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] text-white flex items-center justify-center font-bold overflow-hidden shadow-md">
+            {displayUser.profilePic ? (
+              <img src={displayUser.profilePic} alt={displayUser.name} className="w-full h-full object-cover" />
             ) : (
-              <span>{chat.name?.charAt(0).toUpperCase()}</span>
+              <span>{displayUser.name?.charAt(0).toUpperCase()}</span>
             )}
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-800">{chat.name}</h3>
-            <p className="text-[10px] text-green-500 font-semibold">
+            <h3 className="text-sm font-black text-white">{displayUser.name || chat.chatName}</h3>
+            <p className="text-[10px] text-cyan-300 font-semibold flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${isTyping ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`}></span>
               {isTyping ? 'Typing...' : 'Active Now'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-4 text-blue-600">
-          <button className="p-2 hover:bg-gray-100 rounded-full transition"><FiPhone className="w-5 h-5" /></button>
-          <button className="p-2 hover:bg-gray-100 rounded-full transition"><FiVideo className="w-5 h-5" /></button>
+        <div className="flex items-center space-x-3 text-cyan-300">
+          <button className="p-2 hover:bg-[#0B132B] rounded-full transition cursor-pointer"><FiPhone className="w-4 h-4" /></button>
+          <button className="p-2 hover:bg-[#0B132B] rounded-full transition cursor-pointer"><FiVideo className="w-4 h-4" /></button>
           <button 
             onClick={() => setShowInfoModal(true)} 
-            className="p-2 hover:bg-gray-100 rounded-full transition"
+            className="p-2 hover:bg-[#0B132B] rounded-full transition cursor-pointer"
             title="Chat Info"
           >
-            <FiInfo className="w-5 h-5" />
+            <FiInfo className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       {/* মেসেজ বডি */}
-      <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-gray-50">
+      <div className="flex-1 p-5 overflow-y-auto space-y-4 custom-scrollbar">
         <div className="text-center my-4">
-          <div className="w-16 h-16 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-2 text-2xl font-bold">
-            {chat.name?.charAt(0).toUpperCase()}
+          <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] text-white flex items-center justify-center mx-auto mb-2 text-2xl font-bold shadow-lg">
+            {displayUser.name?.charAt(0).toUpperCase()}
           </div>
-          <h4 className="text-sm font-bold text-gray-800">{chat.name}</h4>
-          <p className="text-xs text-gray-400">You're connected on Messenger.</p>
+          <h4 className="text-sm font-bold text-white">{displayUser.name || chat.chatName}</h4>
+          <p className="text-xs text-cyan-300/70">You're connected on Messenger.</p>
         </div>
 
         {messages.map((msg, index) => {
@@ -274,38 +351,38 @@ const checkBlockStatuses = async () => {
           const isLastMessage = index === messages.length - 1;
 
           return (
-            <div key={index} ref={scrollRef} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+            <div key={msg._id || index} ref={scrollRef} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
               <div className={`flex items-center gap-2 group relative ${isMe ? 'justify-end' : 'justify-start'}`}>
                 
                 {!isMe && (
                   <div className="relative">
                     <button 
                       onClick={() => setActiveMenuId(activeMenuId === msg._id ? null : msg._id)}
-                      className="p-1 text-gray-500 hover:bg-gray-200 rounded-full transition"
+                      className="p-1 text-cyan-300/70 hover:bg-[#1C2541] rounded-full transition cursor-pointer"
                     >
                       <FiMoreVertical className="w-4 h-4" />
                     </button>
 
                     {activeMenuId === msg._id && !isDeleted && (
-                      <div className="absolute left-0 top-6 z-50 w-36 bg-white border border-gray-200 shadow-xl rounded-lg py-1 text-xs text-gray-700">
-                        <button onClick={() => setActiveReactionPickerId(activeReactionPickerId === msg._id ? null : msg._id)} className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2">
-                          <FiSmile className="w-3.5 h-3.5 text-blue-600" /> Reaction
+                      <div className="absolute left-0 top-6 z-50 w-36 bg-[#1C2541] border border-blue-500/30 shadow-xl rounded-2xl py-1 text-xs text-white">
+                        <button onClick={() => setActiveReactionPickerId(activeReactionPickerId === msg._id ? null : msg._id)} className="w-full text-left px-3 py-2 hover:bg-[#0B132B] flex items-center gap-2 cursor-pointer">
+                          <FiSmile className="w-3.5 h-3.5 text-[#00C6FF]" /> Reaction
                         </button>
                         {msg.text && (
-                          <button onClick={() => handleCopyMessage(msg.text)} className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2">
-                            <FiCopy className="w-3.5 h-3.5 text-green-600" /> Copy
+                          <button onClick={() => handleCopyMessage(msg.text)} className="w-full text-left px-3 py-2 hover:bg-[#0B132B] flex items-center gap-2 cursor-pointer">
+                            <FiCopy className="w-3.5 h-3.5 text-emerald-400" /> Copy
                           </button>
                         )}
-                        <button onClick={() => { setReplyingTo(msg); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2">
-                          <FiCornerUpLeft className="w-3.5 h-3.5 text-purple-600" /> Reply
+                        <button onClick={() => { setReplyingTo(msg); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 hover:bg-[#0B132B] flex items-center gap-2 cursor-pointer">
+                          <FiCornerUpLeft className="w-3.5 h-3.5 text-purple-400" /> Reply
                         </button>
                       </div>
                     )}
 
                     {activeReactionPickerId === msg._id && (
-                      <div className="absolute left-0 bottom-8 z-50 bg-white border border-gray-200 shadow-md rounded-full px-2 py-1 flex gap-1">
+                      <div className="absolute left-0 bottom-8 z-50 bg-[#1C2541] border border-blue-500/30 shadow-xl rounded-full px-2 py-1 flex gap-1">
                         {['❤️', '👍', '😆', '😮', '😢', '🙏'].map((emoji) => (
-                          <button key={emoji} onClick={() => handleAddReaction(msg._id, emoji)} className="hover:scale-125 transition text-base">
+                          <button key={emoji} onClick={() => handleAddReaction(msg._id, emoji)} className="hover:scale-125 transition text-base cursor-pointer">
                             {emoji}
                           </button>
                         ))}
@@ -314,9 +391,9 @@ const checkBlockStatuses = async () => {
                   </div>
                 )}
 
-                <div className={`relative max-w-xs lg:max-w-md px-4 py-2.5 rounded-2xl text-sm ${isDeleted ? 'bg-gray-200 text-gray-500 italic border border-gray-300' : isMe ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none shadow-sm'}`}>
+                <div className={`relative max-w-xs lg:max-w-md px-4 py-2.5 rounded-2xl text-xs font-medium ${isDeleted ? 'bg-[#1C2541] text-slate-400 italic border border-blue-900/40' : isMe ? 'bg-gradient-to-r from-[#0084FF] to-[#00C6FF] text-white rounded-br-none shadow-md' : 'bg-[#1C2541] text-slate-100 border border-blue-500/30 rounded-bl-none shadow-inner'}`}>
                   {msg.replyTo && !isDeleted && (
-                    <div className={`mb-1 p-1.5 rounded text-xs border-l-2 ${isMe ? 'bg-blue-700 border-blue-300 text-blue-100' : 'bg-gray-100 border-blue-500 text-gray-600'}`}>
+                    <div className={`mb-1 p-1.5 rounded-xl text-[10px] border-l-2 ${isMe ? 'bg-blue-900/50 border-cyan-300 text-cyan-100' : 'bg-[#0B132B]/60 border-[#00C6FF] text-slate-300'}`}>
                       <p className="font-bold">{msg.replyTo.sender?.name || 'User'}</p>
                       <p className="truncate">{msg.replyTo.text || '[Attachment]'}</p>
                     </div>
@@ -325,11 +402,11 @@ const checkBlockStatuses = async () => {
                   {msg.attachments && msg.attachments.length > 0 && !isDeleted && (
                     <div className="mb-2 space-y-2">
                       {msg.attachments.map((fileUrl, fIndex) => (
-                        <div key={fIndex} className="rounded-lg overflow-hidden border">
+                        <div key={fIndex} className="rounded-xl overflow-hidden border border-blue-900/50">
                           {fileUrl.match(/\.(jpeg|jpg|png|gif|webp)$/i) ? (
-                            <img src={fileUrl} alt="attachment" className="max-h-48 w-full object-cover rounded-lg" />
+                            <img src={fileUrl} alt="attachment" className="max-h-48 w-full object-cover rounded-xl" />
                           ) : (
-                            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className={`block p-2 text-xs underline ${isMe ? 'text-blue-100' : 'text-blue-600'}`}>
+                            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className={`block p-2 text-xs underline ${isMe ? 'text-cyan-100' : 'text-[#00C6FF]'}`}>
                               📄 Download File {fIndex + 1}
                             </a>
                           )}
@@ -338,17 +415,17 @@ const checkBlockStatuses = async () => {
                     </div>
                   )}
 
-                  <p>{msg.text}</p>
+                  <p className="leading-relaxed">{msg.text}</p>
 
                   {msg.reactions && msg.reactions.length > 0 && !isDeleted && (
-                    <div className="absolute -bottom-2.5 right-2 bg-white border border-gray-200 shadow-sm rounded-full px-1.5 py-0.5 flex items-center space-x-1 text-xs">
+                    <div className="absolute -bottom-2.5 right-2 bg-[#1C2541] border border-blue-500/30 shadow-md rounded-full px-1.5 py-0.5 flex items-center space-x-1 text-[10px]">
                       {msg.reactions.map((r, rIdx) => (
                         <span key={rIdx}>{r.emoji}</span>
                       ))}
                     </div>
                   )}
 
-                  <span className={`text-[9px] block mt-1 text-right ${isMe ? 'text-blue-200' : 'text-gray-400'}`}>
+                  <span className={`text-[9px] block mt-1 text-right ${isMe ? 'text-cyan-100/80' : 'text-slate-400'}`}>
                     {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
@@ -357,30 +434,30 @@ const checkBlockStatuses = async () => {
                   <div className="relative">
                     <button 
                       onClick={() => setActiveMenuId(activeMenuId === msg._id ? null : msg._id)}
-                      className="p-1 text-gray-500 hover:bg-gray-200 rounded-full transition"
+                      className="p-1 text-cyan-300/70 hover:bg-[#1C2541] rounded-full transition cursor-pointer"
                     >
                       <FiMoreVertical className="w-4 h-4" />
                     </button>
 
                     {activeMenuId === msg._id && (
-                      <div className="absolute right-0 top-6 z-50 w-36 bg-white border border-gray-200 shadow-xl rounded-lg py-1 text-xs text-gray-700">
+                      <div className="absolute right-0 top-6 z-50 w-36 bg-[#1C2541] border border-blue-500/30 shadow-xl rounded-2xl py-1 text-xs text-white">
                         {!isDeleted && (
                           <>
-                            <button onClick={() => setActiveReactionPickerId(activeReactionPickerId === msg._id ? null : msg._id)} className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2">
-                              <FiSmile className="w-3.5 h-3.5 text-blue-600" /> Reaction
+                            <button onClick={() => setActiveReactionPickerId(activeReactionPickerId === msg._id ? null : msg._id)} className="w-full text-left px-3 py-2 hover:bg-[#0B132B] flex items-center gap-2 cursor-pointer">
+                              <FiSmile className="w-3.5 h-3.5 text-[#00C6FF]" /> Reaction
                             </button>
                             {msg.text && (
-                              <button onClick={() => handleCopyMessage(msg.text)} className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2">
-                                <FiCopy className="w-3.5 h-3.5 text-green-600" /> Copy
+                              <button onClick={() => handleCopyMessage(msg.text)} className="w-full text-left px-3 py-2 hover:bg-[#0B132B] flex items-center gap-2 cursor-pointer">
+                                <FiCopy className="w-3.5 h-3.5 text-emerald-400" /> Copy
                               </button>
                             )}
-                            <button onClick={() => { setReplyingTo(msg); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2">
-                              <FiCornerUpLeft className="w-3.5 h-3.5 text-purple-600" /> Reply
+                            <button onClick={() => { setReplyingTo(msg); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 hover:bg-[#0B132B] flex items-center gap-2 cursor-pointer">
+                              <FiCornerUpLeft className="w-3.5 h-3.5 text-purple-400" /> Reply
                             </button>
                           </>
                         )}
                         {!isDeleted && (
-                          <button onClick={() => handleDeleteMessage(msg._id)} className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2">
+                          <button onClick={() => handleDeleteMessage(msg._id)} className="w-full text-left px-3 py-2 hover:bg-red-950/50 text-red-400 flex items-center gap-2 cursor-pointer">
                             <FiTrash2 className="w-3.5 h-3.5" /> Delete
                           </button>
                         )}
@@ -394,18 +471,18 @@ const checkBlockStatuses = async () => {
               {isMe && isLastMessage && (
                 <div className="mt-1 mr-1">
                   {msg.seenBy && msg.seenBy.length > 1 ? (
-                    <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                    <div className="flex items-center gap-1 text-[10px] text-cyan-300/80">
                       <span>Seen</span>
-                      {chat.profilePic ? (
-                        <img src={chat.profilePic} alt="seen" className="w-3.5 h-3.5 rounded-full object-cover" />
+                      {displayUser.profilePic ? (
+                        <img src={displayUser.profilePic} alt="seen" className="w-3.5 h-3.5 rounded-full object-cover border border-cyan-400/30" />
                       ) : (
-                        <span className="w-3.5 h-3.5 rounded-full bg-gray-300 text-[8px] flex items-center justify-center font-bold">
-                          {chat.name?.charAt(0).toUpperCase()}
+                        <span className="w-3.5 h-3.5 rounded-full bg-[#0B132B] text-[8px] flex items-center justify-center font-bold text-[#00C6FF]">
+                          {displayUser.name?.charAt(0).toUpperCase()}
                         </span>
                       )}
                     </div>
                   ) : (
-                    <span className="text-[10px] text-gray-400">Delivered</span>
+                    <span className="text-[10px] text-slate-400">Delivered</span>
                   )}
                 </div>
               )}
@@ -416,11 +493,11 @@ const checkBlockStatuses = async () => {
 
       {/* রিপ্লাই বার */}
       {replyingTo && (
-        <div className="px-4 py-2 bg-blue-50 flex items-center justify-between border-t border-blue-100 text-xs text-blue-900">
+        <div className="px-4 py-2 bg-[#1C2541] flex items-center justify-between border-t border-blue-900/50 text-xs text-cyan-200">
           <div>
-            <span className="font-bold">Replying to {replyingTo.sender?.name}:</span> {replyingTo.text || '[Attachment]'}
+            <span className="font-bold text-[#00C6FF]">Replying to {replyingTo.sender?.name}:</span> {replyingTo.text || '[Attachment]'}
           </div>
-          <button onClick={() => setReplyingTo(null)} className="text-gray-500 hover:text-red-500">
+          <button onClick={() => setReplyingTo(null)} className="text-slate-400 hover:text-red-400 cursor-pointer">
             <FiX className="w-4 h-4" />
           </button>
         </div>
@@ -428,39 +505,38 @@ const checkBlockStatuses = async () => {
 
       {/* ফাইল সিলেক্ট প্রিভিউ বার */}
       {selectedFiles.length > 0 && (
-        <div className="px-4 py-2 bg-gray-100 flex items-center justify-between border-t">
-          <span className="text-xs text-gray-600 font-semibold">{selectedFiles.length} file(s) selected</span>
-          <button type="button" onClick={() => setSelectedFiles([])} className="text-red-500 text-xs font-bold hover:underline flex items-center gap-1">
+        <div className="px-4 py-2 bg-[#1C2541] flex items-center justify-between border-t border-blue-900/50">
+          <span className="text-xs text-cyan-200 font-semibold">{selectedFiles.length} file(s) selected</span>
+          <button type="button" onClick={() => setSelectedFiles([])} className="text-red-400 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
             <FiX className="w-4 h-4" /> Cancel
           </button>
         </div>
       )}
 
-      {/* ব্লক স্ট্যাটাস অনুযায়ী ইনপুট বা ইনফো বার */}
+      {/* ব্লক স্ট্যাটাস অনুযায়ী ইনপুট বা ইনফো বার */}
       {isBlockedByMe ? (
-        <div className="p-4 bg-gray-100 border-t border-gray-200 text-center flex flex-col items-center justify-center space-y-2">
-          <p className="text-xs text-gray-600">You blocked this user. You can't send or receive messages.</p>
-          {/* রিইউজেবল BlockButton কম্পোনেন্ট এখানেও ব্যবহার করা হলো */}
+        <div className="p-4 bg-[#1C2541] border-t border-blue-900/50 text-center flex flex-col items-center justify-center space-y-2">
+          <p className="text-xs text-slate-300">You blocked this user. You can't send or receive messages.</p>
           <div className="w-44">
             <BlockButton 
-              targetUserId={chat._id}
+              targetUserId={targetUserId}
               isBlocked={isBlockedByMe}
               socketRef={socketRef}
               onBlockToggle={async (blockedStatus) => {
                 setIsBlockedByMe(blockedStatus);
                 await checkBlockStatuses();
-                socketRef.current.emit('blockUpdate', { receiverId: chat._id });
+                socketRef.current.emit('blockUpdate', { receiverId: targetUserId });
               }}
             />
           </div>
         </div>
       ) : isBlockedByThem ? (
-        <div className="p-4 bg-gray-100 border-t border-gray-200 text-center">
-          <p className="text-xs text-gray-500">This person is unavailable on Messenger.</p>
+        <div className="p-4 bg-[#1C2541] border-t border-blue-900/50 text-center">
+          <p className="text-xs text-slate-400">This person is unavailable on Messenger.</p>
         </div>
       ) : (
         /* ইনপুট ফর্ম */
-        <form onSubmit={handleSendMessage} className="px-4 py-3 bg-white border-t border-gray-200 flex items-center space-x-2 relative">
+        <form onSubmit={handleSendMessage} className="px-4 py-3 bg-[#1C2541]/90 backdrop-blur-md border-t border-blue-900/50 flex items-center space-x-2 relative">
           <input 
             type="file" 
             multiple 
@@ -470,12 +546,12 @@ const checkBlockStatuses = async () => {
             accept="image/*,video/*,.pdf,.doc,.docx"
           />
 
-          <button type="button" onClick={() => fileInputRef.current.click()} className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition">
+          <button type="button" onClick={() => fileInputRef.current.click()} className="p-2 text-[#00C6FF] hover:bg-[#0B132B] rounded-full transition cursor-pointer">
             <FiImage className="w-5 h-5" />
           </button>
 
           <div className="relative">
-            <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition">
+            <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-[#00C6FF] hover:bg-[#0B132B] rounded-full transition cursor-pointer">
               <FiSmile className="w-5 h-5" />
             </button>
 
@@ -491,10 +567,10 @@ const checkBlockStatuses = async () => {
             placeholder="Aa" 
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            className="flex-1 bg-gray-100 border border-transparent focus:border-blue-300 focus:bg-white px-4 py-2 rounded-full text-sm focus:outline-none transition"
+            className="flex-1 bg-[#0B132B] border border-blue-900/60 focus:border-[#00C6FF] focus:bg-[#0B132B] px-4 py-2.5 rounded-full text-xs text-white focus:outline-none transition shadow-inner"
           />
 
-          <button type="submit" className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition shadow-sm">
+          <button type="submit" className="p-2.5 bg-gradient-to-r from-[#0084FF] to-[#00C6FF] hover:opacity-90 text-white rounded-full transition shadow-lg cursor-pointer">
             <FiSend className="w-4 h-4" />
           </button>
         </form>
@@ -502,7 +578,7 @@ const checkBlockStatuses = async () => {
 
       {/* চ্যাট ইনফো ও ব্লক মডাল কম্পোনেন্ট */}
       <ChatInfoModal 
-        chat={chat} 
+        chat={displayUser} 
         isOpen={showInfoModal} 
         onClose={() => setShowInfoModal(false)} 
         isBlocked={isBlockedByMe}
@@ -510,7 +586,7 @@ const checkBlockStatuses = async () => {
         onBlockToggle={async (blockedStatus) => {
           setIsBlockedByMe(blockedStatus);
           await checkBlockStatuses();
-          socketRef.current.emit('blockUpdate', { receiverId: chat._id });
+          socketRef.current.emit('blockUpdate', { receiverId: targetUserId });
         }}
       />
     </div>
