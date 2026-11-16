@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { FiSearch, FiEdit, FiMoreVertical, FiEye, FiTrash2 } from 'react-icons/fi';
 import API from '../services/api';
@@ -38,16 +39,36 @@ export default function ChatsTab({ selectedChat, setSelectedChat, authUser, sock
         }
       }
 
+      // পেজ রিলোড ছাড়াই ইনস্ট্যান্ট চ্যাট লিস্ট আপডেট ও টপে নিয়ে আসার লজিক
+      setChatList(prev => {
+        const index = prev.findIndex(c => c._id === newMessage.conversationId);
+        if (index > -1) {
+          const updatedChat = {
+            ...prev[index],
+            lastMessage: newMessage,
+            updatedAt: new Date().toISOString(),
+            unreadCount: (selectedChat?._id === newMessage.conversationId) ? 0 : (prev[index].unreadCount || 0) + 1
+          };
+          const filtered = prev.filter(c => c._id !== newMessage.conversationId);
+          return [updatedChat, ...filtered];
+        } else {
+          fetchConversations();
+          return prev;
+        }
+      });
+    };
+
+    const handleBlockUpdate = () => {
       fetchConversations();
     };
 
     socketRef.current.on('getMessage', handleMessageUpdate);
-    socketRef.current.on('userBlockedStatusChanged', handleMessageUpdate);
+    socketRef.current.on('userBlockedStatusChanged', handleBlockUpdate);
 
     return () => {
       if (socketRef.current) {
         socketRef.current.off('getMessage', handleMessageUpdate);
-        socketRef.current.off('userBlockedStatusChanged', handleMessageUpdate);
+        socketRef.current.off('userBlockedStatusChanged', handleBlockUpdate);
       }
     };
   }, [socketRef, selectedChat]);
@@ -92,15 +113,22 @@ export default function ChatsTab({ selectedChat, setSelectedChat, authUser, sock
 
   const handleDeleteChat = async (conversationId, e) => {
     e.stopPropagation();
+    
+    setChatList(prev => prev.filter(c => c._id !== conversationId));
+    setActiveMenuId(null);
+    if (selectedChat?._id === conversationId || selectedChat?._id === viewingProfileUser?._id) {
+      setSelectedChat(null);
+    }
+
     try {
       await API.put(`/chats/hide-chat/${conversationId}`);
-      setChatList(prev => prev.filter(c => c._id !== conversationId));
-      setActiveMenuId(null);
-      if (selectedChat?._id === conversationId) {
-        setSelectedChat(null);
-      }
     } catch (err) {
-      console.error("Failed to hide chat", err);
+      console.error("Failed to hide chat on backend", err);
+      try {
+        await API.delete(`/chats/${conversationId}`);
+      } catch (innerErr) {
+        console.error("Failed to delete chat via fallback", innerErr);
+      }
     }
   };
 
@@ -145,25 +173,25 @@ export default function ChatsTab({ selectedChat, setSelectedChat, authUser, sock
   }
 
   return (
-    <div className="w-full flex-1 sm:w-[350px] lg:w-[380px] flex flex-col h-full border-r border-blue-900/45 bg-gradient-to-b from-[#0B132B] via-[#1C2541] to-[#0B132B] relative select-none font-sans text-white">
+    <div className="w-full h-full flex flex-col bg-gradient-to-b from-[#0B132B] via-[#1C2541] to-[#0B132B] relative select-none font-sans text-white overflow-hidden">
       
-      {/* টপ হেডার (গ্লাস ইফেক্ট ও ডিপ কালার) */}
-      <div className="flex items-center justify-between px-6 py-4 bg-[#1C2541]/90 backdrop-blur-md border-b border-blue-900/50 shadow-lg">
+      {/* টপ হেডার */}
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 bg-[#1C2541]/90 backdrop-blur-md border-b border-blue-900/50 shadow-lg flex-shrink-0">
         <div className="flex items-center space-x-2.5">
-          <div className="w-2.5 h-6 bg-gradient-to-b from-[#00C6FF] to-[#0084FF] rounded-full shadow-[0_0_10px_#0084FF]"></div>
-          <h2 className="text-lg font-black bg-gradient-to-r from-[#00C6FF] via-[#4CC9F0] to-[#0084FF] bg-clip-text text-transparent tracking-tight">
+          <div className="w-2 sm:w-2.5 h-5 sm:h-6 bg-gradient-to-b from-[#00C6FF] to-[#0084FF] rounded-full shadow-[0_0_10px_#0084FF]"></div>
+          <h2 className="text-base sm:text-lg font-black bg-gradient-to-r from-[#00C6FF] via-[#4CC9F0] to-[#0084FF] bg-clip-text text-transparent tracking-tight">
             Chats
           </h2>
         </div>
-        <button className="p-2.5 bg-[#0B132B] hover:bg-blue-950/60 rounded-full text-[#00C6FF] transition shadow-md cursor-pointer border border-blue-900/50">
+        <button className="p-2 sm:p-2.5 bg-[#0B132B] hover:bg-blue-950/60 rounded-full text-[#00C6FF] transition shadow-md cursor-pointer border border-blue-900/50">
           <FiEdit className="w-4 h-4" />
         </button>
       </div>
 
       {/* সার্চ বার */}
-      <div className="px-4 py-3">
-        <div className="flex items-center bg-[#0B132B] border border-blue-900/60 rounded-full px-4 py-2 space-x-2 shadow-inner focus-within:border-cyan-400/50 transition">
-          <FiSearch className="w-4 h-4 text-cyan-400" />
+      <div className="px-3 sm:px-4 py-2.5 sm:py-3 flex-shrink-0">
+        <div className="flex items-center bg-[#0B132B] border border-blue-900/60 rounded-full px-3.5 sm:px-4 py-2 space-x-2 shadow-inner focus-within:border-cyan-400/50 transition">
+          <FiSearch className="w-4 h-4 text-cyan-400 flex-shrink-0" />
           <input 
             type="text" 
             placeholder="Search Messenger" 
@@ -175,7 +203,7 @@ export default function ChatsTab({ selectedChat, setSelectedChat, authUser, sock
       </div>
 
       {/* চ্যাট লিস্ট */}
-      <div className="flex-1 overflow-y-auto space-y-1.5 p-3 custom-scrollbar" ref={menuRef}>
+      <div className="flex-1 overflow-y-auto space-y-1.5 px-2.5 sm:p-3 pb-4 custom-scrollbar" ref={menuRef}>
         {loading ? (
           <div className="text-center text-cyan-300/70 text-xs mt-10 font-medium">Loading chats...</div>
         ) : filteredChats.length === 0 ? (
@@ -192,22 +220,22 @@ export default function ChatsTab({ selectedChat, setSelectedChat, authUser, sock
               <div 
                 key={chat._id} 
                 onClick={() => handleSelectChat(chat, otherMember)}
-                className={`flex items-center justify-between px-3.5 py-3 rounded-2xl cursor-pointer transition relative border ${isSelected ? 'bg-[#0B132B] border-cyan-500/40 shadow-inner' : 'bg-[#1C2541]/70 hover:bg-[#1C2541] border-blue-900/30'}`}
+                className={`flex items-center justify-between px-3 sm:px-3.5 py-2.5 sm:py-3 rounded-2xl cursor-pointer transition relative border ${isSelected ? 'bg-[#0B132B] border-cyan-500/40 shadow-inner' : 'bg-[#1C2541]/70 hover:bg-[#1C2541] border-blue-900/30'}`}
               >
-                <div className="flex items-center space-x-3 overflow-hidden flex-1">
+                <div className="flex items-center space-x-3 overflow-hidden flex-1 min-w-0">
                   <div className="relative flex-shrink-0">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-base bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] overflow-hidden shadow-md">
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-base bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] overflow-hidden shadow-md">
                       {otherMember.profilePic ? (
                         <img src={otherMember.profilePic} alt={otherMember.name} className="w-full h-full object-cover" />
                       ) : (
                         <span>{otherMember.name?.charAt(0).toUpperCase() || 'U'}</span>
                       )}
                     </div>
-                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-400 border-2 border-[#1C2541] rounded-full shadow-[0_0_6px_#34D399]"></span>
+                    <span className="absolute bottom-0 right-0 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-emerald-400 border-2 border-[#1C2541] rounded-full shadow-[0_0_6px_#34D399]"></span>
                   </div>
 
                   <div className="overflow-hidden flex-1 min-w-0">
-                    <h4 className={`text-xs truncate ${isUnread ? 'font-black text-white' : 'font-extrabold text-slate-100'}`}>
+                    <h4 className={`text-xs sm:text-[13px] truncate ${isUnread ? 'font-black text-white' : 'font-extrabold text-slate-100'}`}>
                       {otherMember.name || chat.chatName || 'User'}
                     </h4>
                     <p className={`text-[11px] truncate mt-0.5 ${isUnread ? 'font-bold text-cyan-200' : 'text-cyan-300/70 font-medium'}`}>
@@ -216,20 +244,19 @@ export default function ChatsTab({ selectedChat, setSelectedChat, authUser, sock
                   </div>
                 </div>
 
-                {/* আনরিড কাউন্ট ব্যাজ */}
                 {isUnread && (
-                  <span className="w-5 h-5 bg-gradient-to-r from-[#0084FF] to-[#00C6FF] text-white rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 ml-2 shadow-md">
+                  <span className="w-5 h-5 bg-gradient-to-r from-[#0084FF] to-[#00C6FF] text-white rounded-xl flex items-center justify-center text-[10px] font-black flex-shrink-0 ml-2 shadow-md">
                     {chat.unreadCount}
                   </span>
                 )}
 
-                <div className="relative flex items-center space-x-1 flex-shrink-0 ml-2">
+                <div className="relative flex items-center space-x-1 flex-shrink-0 ml-1 sm:ml-2">
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       setActiveMenuId(activeMenuId === chat._id ? null : chat._id);
                     }}
-                    className="p-2 hover:bg-[#0B132B] rounded-full text-cyan-300/70 hover:text-cyan-200 transition cursor-pointer"
+                    className="p-1.5 sm:p-2 hover:bg-[#0B132B] rounded-full text-cyan-300/70 hover:text-cyan-200 transition cursor-pointer"
                   >
                     <FiMoreVertical className="w-4 h-4" />
                   </button>

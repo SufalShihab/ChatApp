@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 import API from '../services/api';
 
 export default function Login() {
@@ -10,11 +11,22 @@ export default function Login() {
     username: ''    // অপশনাল ইউজার নাম
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
   const navigate = useNavigate();
   const setAuthUser = useAuthStore((state) => state.setAuthUser);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+
+    if (!formData.identifier.trim() && !formData.username.trim()) {
+      setError('দয়া করে ফোন/ইমেইল অথবা ইউজারনেম দিন।');
+      return;
+    }
+
+    setLoading(true);
     try {
       const res = await API.post('/auth/login', formData);
       localStorage.setItem('token', res.data.token);
@@ -22,27 +34,33 @@ export default function Login() {
       navigate('/chat'); // সফল লগইনের পর অটোমেটিক চ্যাট হোম পেজে রিডাইরেক্ট
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#0B132B] via-[#1C2541] to-[#0B132B] py-12 px-4 sm:px-6 lg:px-8 font-sans text-white select-none">
-      <div className="w-full max-w-md bg-[#1C2541]/90 backdrop-blur-md p-8 rounded-3xl shadow-2xl border border-blue-500/30 relative overflow-hidden">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-gradient-to-b from-[#0B132B] via-[#1C2541] to-[#0B132B] py-8 sm:py-12 px-3.5 sm:px-6 lg:px-8 font-sans text-white select-none">
+      <div className="w-full max-w-md bg-[#1C2541]/90 backdrop-blur-md p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-2xl border border-blue-500/30 relative overflow-hidden">
         
         {/* ব্যাকগ্রাউন্ড গ্লো ইফেক্ট */}
         <div className="absolute -top-16 -right-16 w-44 h-44 bg-gradient-to-br from-[#0084FF]/20 to-[#00C6FF]/20 rounded-full blur-3xl pointer-events-none"></div>
 
         {/* Header */}
-        <div className="text-center mb-8 relative z-10">
-          <h2 className="text-3xl font-black bg-gradient-to-r from-[#00C6FF] via-[#4CC9F0] to-[#0084FF] bg-clip-text text-transparent tracking-tight">
+        <div className="text-center mb-6 sm:mb-8 relative z-10">
+          <h2 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-[#00C6FF] via-[#4CC9F0] to-[#0084FF] bg-clip-text text-transparent tracking-tight">
             Welcome Back!
           </h2>
           <p className="text-xs text-cyan-300/70 mt-1 font-semibold">Log in to your Messenger account</p>
         </div>
 
-        {error && <div className="mb-4 p-3 bg-red-950/50 border-l-4 border-red-500 text-red-400 text-xs font-bold rounded-xl">{error}</div>}
+        {error && (
+          <div className="mb-4 p-3 bg-red-950/50 border-l-4 border-red-500 text-red-400 text-xs font-bold rounded-xl relative z-10">
+            {error}
+          </div>
+        )}
         
-        <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
+        <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4 relative z-10">
           <div>
             <label className="block text-[10px] font-black text-cyan-300 uppercase tracking-wider mb-1">
               Phone or Email <span className="text-slate-400 font-normal">(Option 1)</span>
@@ -51,22 +69,22 @@ export default function Login() {
               type="text"
               value={formData.identifier}
               onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
-              className="w-full px-4 py-2.5 bg-[#0B132B] border border-blue-900/60 rounded-2xl focus:outline-none focus:border-[#00C6FF] focus:bg-[#0B132B] transition text-xs text-white placeholder-slate-500 shadow-inner"
+              className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 bg-[#0B132B] border border-blue-900/60 rounded-xl sm:rounded-2xl focus:outline-none focus:border-[#00C6FF] focus:bg-[#0B132B] transition text-xs sm:text-sm text-white placeholder-slate-500 shadow-inner"
               placeholder="Email or Phone number"
             />
           </div>
 
-          <div className="text-center text-[10px] font-bold text-cyan-300/50 my-1">OR (Optional Username)</div>
+          {/* <div className="text-center text-[10px] font-bold text-cyan-300/50 my-0.5">OR (Optional Username)</div> */}
 
           <div>
             <label className="block text-[10px] font-black text-cyan-300 uppercase tracking-wider mb-1">
-              Username <span className="text-slate-400 font-normal">(Option 3)</span>
+              Username <span className="text-slate-400 font-normal">(Option 2)</span>
             </label>
             <input
               type="text"
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              className="w-full px-4 py-2.5 bg-[#0B132B] border border-blue-900/60 rounded-2xl focus:outline-none focus:border-[#00C6FF] focus:bg-[#0B132B] transition text-xs text-white placeholder-slate-500 shadow-inner"
+              className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 bg-[#0B132B] border border-blue-900/60 rounded-xl sm:rounded-2xl focus:outline-none focus:border-[#00C6FF] focus:bg-[#0B132B] transition text-xs sm:text-sm text-white placeholder-slate-500 shadow-inner"
               placeholder="@username"
             />
           </div>
@@ -75,25 +93,36 @@ export default function Login() {
             <label className="block text-[10px] font-black text-cyan-300 uppercase tracking-wider mb-1">
               Password <span className="text-red-400">*</span>
             </label>
-            <input
-              type="password"
-              required
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-4 py-2.5 bg-[#0B132B] border border-blue-900/60 rounded-2xl focus:outline-none focus:border-[#00C6FF] focus:bg-[#0B132B] transition text-xs text-white placeholder-slate-500 shadow-inner"
-              placeholder="••••••••"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 pr-10 bg-[#0B132B] border border-blue-900/60 rounded-xl sm:rounded-2xl focus:outline-none focus:border-[#00C6FF] focus:bg-[#0B132B] transition text-xs sm:text-sm text-white placeholder-slate-500 shadow-inner"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition cursor-pointer p-1"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           <button
             type="submit"
-            className="w-full py-3.5 bg-gradient-to-r from-[#0084FF] to-[#00C6FF] text-white font-black text-xs rounded-2xl shadow-lg hover:opacity-90 transition duration-200 transform active:scale-[0.99] cursor-pointer"
+            disabled={loading}
+            className="w-full py-3 sm:py-3.5 mt-2 bg-gradient-to-r from-[#0084FF] to-[#00C6FF] text-white font-black text-xs sm:text-sm rounded-xl sm:rounded-2xl shadow-lg hover:opacity-90 disabled:opacity-60 transition duration-200 transform active:scale-[0.99] cursor-pointer"
           >
-            Log In
+            {loading ? 'Logging in...' : 'Log In'}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-slate-300 font-medium relative z-10">
+        <p className="mt-5 sm:mt-6 text-center text-xs text-slate-300 font-medium relative z-10">
           Don't have an account? <Link to="/register" className="text-[#00C6FF] font-black hover:underline">Create new account</Link>
         </p>
       </div>

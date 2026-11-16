@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import API from '../services/api';
-import { FiSearch, FiUserPlus, FiUserX, FiCheck } from 'react-icons/fi';
+import { FiSearch, FiUserPlus, FiUserX, FiCheck, FiArrowLeft } from 'react-icons/fi';
 
-export default function PeopleTab({ onSelectUser }) {
+export default function PeopleTab({ onSelectUser, onBack }) {
   const [usersList, setUsersList] = useState([]);
   const [myFriendsIds, setMyFriendsIds] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -65,22 +65,32 @@ export default function PeopleTab({ onSelectUser }) {
   });
 
   return (
-    <div className="w-full flex-1 flex flex-col h-full border-r border-blue-900/40 bg-gradient-to-b from-[#0B132B] via-[#1C2541] to-[#0B132B] relative select-none font-sans text-white">
+    <div className="w-full h-full flex flex-col bg-gradient-to-b from-[#0B132B] via-[#1C2541] to-[#0B132B] relative select-none font-sans text-white overflow-hidden">
       
-      {/* টপ হেডার */}
-      <div className="flex items-center justify-between px-6 py-4 bg-[#1C2541]/90 backdrop-blur-md border-b border-blue-900/50 shadow-lg">
+      {/* টপ হেডার (মোবাইল ব্যাক বাটন সহ) */}
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 bg-[#1C2541]/90 backdrop-blur-md border-b border-blue-900/50 shadow-lg flex-shrink-0">
         <div className="flex items-center space-x-2.5">
-          <div className="w-2.5 h-6 bg-gradient-to-b from-[#00C6FF] to-[#0084FF] rounded-full shadow-[0_0_10px_#0084FF]"></div>
-          <h2 className="text-lg font-black bg-gradient-to-r from-[#00C6FF] via-[#4CC9F0] to-[#0084FF] bg-clip-text text-transparent tracking-tight">
+          {/* মোবাইল ব্যাক বাটন */}
+          {onBack && (
+            <button 
+              onClick={onBack}
+              className=" p-2 -ml-1 text-cyan-300 hover:bg-[#0B132B] rounded-full transition cursor-pointer flex-shrink-0"
+              aria-label="Back"
+            >
+              <FiArrowLeft className="w-5 h-5" />
+            </button>
+          )}
+          <div className="w-2 sm:w-2.5 h-5 sm:h-6 bg-gradient-to-b from-[#00C6FF] to-[#0084FF] rounded-full shadow-[0_0_10px_#0084FF]"></div>
+          <h2 className="text-base sm:text-lg font-black bg-gradient-to-r from-[#00C6FF] via-[#4CC9F0] to-[#0084FF] bg-clip-text text-transparent tracking-tight">
             People
           </h2>
         </div>
       </div>
 
       {/* সার্চ বার */}
-      <div className="px-5 py-3">
-        <div className="flex items-center bg-[#0B132B] border border-blue-900/60 rounded-full px-4 py-2.5 space-x-2 shadow-inner focus-within:border-[#00C6FF] transition">
-          <FiSearch className="w-4 h-4 text-cyan-400" />
+      <div className="px-3 sm:px-5 py-2.5 sm:py-3 flex-shrink-0">
+        <div className="flex items-center bg-[#0B132B] border border-blue-900/60 rounded-full px-3.5 sm:px-4 py-2 sm:py-2.5 space-x-2 shadow-inner focus-within:border-[#00C6FF] transition">
+          <FiSearch className="w-4 h-4 text-cyan-400 flex-shrink-0" />
           <input 
             type="text" 
             placeholder="Search by name, username or email..." 
@@ -91,13 +101,14 @@ export default function PeopleTab({ onSelectUser }) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+      {/* ইউজার কার্ড গ্রিড */}
+      <div className="flex-1 overflow-y-auto px-3 sm:p-4 pb-6 custom-scrollbar">
         {loading ? (
           <div className="text-center text-cyan-300/70 text-xs mt-10">Loading people...</div>
         ) : filteredUsers.length === 0 ? (
           <div className="text-center text-cyan-300/70 text-xs mt-10">No users found.</div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 gap-2.5 sm:gap-3">
             {filteredUsers.map((user) => {
               const isSent = sentRequests.includes(user._id);
 
@@ -105,49 +116,49 @@ export default function PeopleTab({ onSelectUser }) {
                 <div 
                   key={user._id} 
                   onClick={() => onSelectUser && onSelectUser(user)}
-                  className="bg-[#1C2541] border border-blue-500/30 rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl hover:border-blue-400/50 transition cursor-pointer flex flex-col group"
+                  className="bg-[#1C2541] border border-blue-500/30 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl hover:border-blue-400/50 transition cursor-pointer flex flex-col group"
                 >
-                  <div className="w-full h-32 sm:h-36 bg-[#0B132B] overflow-hidden relative border-b border-blue-900/40">
+                  <div className="w-full h-28 sm:h-32 bg-[#0B132B] overflow-hidden relative border-b border-blue-900/40">
                     {user.profilePic ? (
                       <img src={user.profilePic} alt={user.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] flex items-center justify-center text-white font-bold text-3xl">
+                      <div className="w-full h-full bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] flex items-center justify-center text-white font-bold text-2xl sm:text-3xl">
                         {user.name?.charAt(0).toUpperCase()}
                       </div>
                     )}
                   </div>
 
-                  <div className="p-3 flex-1 flex flex-col justify-between bg-gradient-to-br from-[#1C2541] to-[#131B35]">
+                  <div className="p-2.5 sm:p-3 flex-1 flex flex-col justify-between bg-gradient-to-br from-[#1C2541] to-[#131B35]">
                     <div>
                       <h4 className="text-xs sm:text-sm font-black text-white truncate">{user.name}</h4>
-                      <p className="text-[11px] text-cyan-300/70 truncate font-semibold mb-3">@{user.username}</p>
+                      <p className="text-[10px] sm:text-[11px] text-cyan-300/70 truncate font-semibold mb-2.5 sm:mb-3">@{user.username}</p>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 sm:space-y-2">
                       {isSent ? (
                         <button 
                           disabled
-                          className="w-full py-2 bg-emerald-950/60 text-emerald-400 font-bold text-xs rounded-xl flex items-center justify-center space-x-1 border border-emerald-500/30 cursor-default shadow-inner"
+                          className="w-full py-1.5 sm:py-2 bg-emerald-950/60 text-emerald-400 font-bold text-[11px] sm:text-xs rounded-xl flex items-center justify-center space-x-1 border border-emerald-500/30 cursor-default shadow-inner"
                         >
-                          <FiCheck className="w-3.5 h-3.5" />
-                          <span>Request Sent</span>
+                          <FiCheck className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="truncate">Request Sent</span>
                         </button>
                       ) : (
                         <button 
                           onClick={(e) => handleSendRequest(e, user._id)}
-                          className="w-full py-2 bg-gradient-to-r from-[#0084FF]/20 to-[#00C6FF]/20 hover:from-[#0084FF]/30 hover:to-[#00C6FF]/30 text-[#00C6FF] font-bold text-xs rounded-xl flex items-center justify-center space-x-1 transition border border-cyan-500/30 shadow-sm cursor-pointer"
+                          className="w-full py-1.5 sm:py-2 bg-gradient-to-r from-[#0084FF]/20 to-[#00C6FF]/20 hover:from-[#0084FF]/30 hover:to-[#00C6FF]/30 text-[#00C6FF] font-bold text-[11px] sm:text-xs rounded-xl flex items-center justify-center space-x-1 transition border border-cyan-500/30 shadow-sm cursor-pointer"
                         >
-                          <FiUserPlus className="w-3.5 h-3.5" />
-                          <span>Add friend</span>
+                          <FiUserPlus className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="truncate">Add friend</span>
                         </button>
                       )}
 
                       <button 
                         onClick={(e) => handleRemove(e, user._id)}
-                        className="w-full py-2 bg-[#0B132B]/80 hover:bg-[#0B132B] text-slate-300 font-bold text-xs rounded-xl flex items-center justify-center space-x-1 transition border border-blue-900/60 cursor-pointer shadow-inner"
+                        className="w-full py-1.5 sm:py-2 bg-[#0B132B]/80 hover:bg-[#0B132B] text-slate-300 font-bold text-[11px] sm:text-xs rounded-xl flex items-center justify-center space-x-1 transition border border-blue-900/60 cursor-pointer shadow-inner"
                       >
-                        <FiUserX className="w-3.5 h-3.5 text-orange-400" />
-                        <span>Remove</span>
+                        <FiUserX className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />
+                        <span className="truncate">Remove</span>
                       </button>
                     </div>
                   </div>

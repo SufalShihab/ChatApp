@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiSend, FiImage, FiSmile, FiPhone, FiVideo, FiInfo, FiX, FiMoreVertical, FiCopy, FiCornerUpLeft, FiTrash2 } from 'react-icons/fi';
+import { 
+  FiSend, FiImage, FiSmile, FiPhone, FiVideo, FiInfo, 
+  FiX, FiMoreVertical, FiCopy, FiCornerUpLeft, FiTrash2, FiArrowLeft 
+} from 'react-icons/fi';
 import { useAuthStore } from '../store/useAuthStore';
-import io from 'socket.io-client';
 import API from '../services/api';
 import Picker from 'emoji-picker-react';
 import ChatInfoModal from './ChatInfoModal';
 import BlockButton from './BlockButton';
 
-const SOCKET_URL = 'http://localhost:5000';
-
-export default function ChatBox({ chat }) {
+export default function ChatBox({ chat, authUser, socketRef, onBack }) { // 🔥 প্রপস থেকে socketRef রিসিভ করা হলো
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [conversationId, setConversationId] = useState(null);
@@ -26,8 +26,6 @@ export default function ChatBox({ chat }) {
   const [activeMenuId, setActiveMenuId] = useState(null); 
   const [activeReactionPickerId, setActiveReactionPickerId] = useState(null); 
 
-  const authUser = useAuthStore((state) => state.authUser);
-  const socketRef = useRef(null);
   const fileInputRef = useRef(null);
   const scrollRef = useRef();
 
@@ -66,20 +64,7 @@ export default function ChatBox({ chat }) {
     }
   };
 
-  // সকেট কানেকশন একবারই ইনিশিয়ালাইজ করার জন্য
-  useEffect(() => {
-    socketRef.current = io(SOCKET_URL);
-
-    if (authUser) {
-      socketRef.current.emit('addUser', authUser._id);
-    }
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-    };
-  }, [authUser]);
+  // 🔴 নিজস্ব io(SOCKET_URL) কানেকশনটি পুরোপুরি রিমুভ করা হয়েছে, কারণ মেইন ChatHome থেকে socketRef আসছে।
 
   // চ্যাটবক্স ওপেন থাকা অবস্থায় নতুন মেসেজ আসলে বা চ্যাট একটিভ থাকলে অটোমেটিক রিড করা
   useEffect(() => {
@@ -104,7 +89,7 @@ export default function ChatBox({ chat }) {
 
   // চ্যাট বা টার্গেট ইউজার পরিবর্তন হলে কনভার্সেশন লোড ও সকেট লিসেনার সেটআপ
   useEffect(() => {
-    if (!targetUserId || !authUser || !socketRef.current) return;
+    if (!targetUserId || !authUser || !socketRef?.current) return;
 
     const initChat = async () => {
       try {
@@ -185,7 +170,7 @@ export default function ChatBox({ chat }) {
       }
     });
 
-  }, [targetUserId, authUser, conversationId]);
+  }, [targetUserId, authUser, conversationId, socketRef]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -300,28 +285,39 @@ export default function ChatBox({ chat }) {
   const displayUser = getDisplayUser();
 
   return (
-    <div className="flex flex-col h-full w-full bg-gradient-to-b from-[#0B132B] via-[#1C2541] to-[#0B132B] text-white relative select-none font-sans">
+    <div className="flex flex-col h-full w-full bg-gradient-to-b from-[#0B132B] via-[#1C2541] to-[#0B132B] text-white relative select-none font-sans overflow-hidden">
       
-      {/* টপ হেডার (গ্লাস ইফেক্ট ও ডিপ কালার) */}
-      <div className="flex items-center justify-between px-6 py-4 bg-[#1C2541]/90 backdrop-blur-md border-b border-blue-900/50 shadow-lg">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] text-white flex items-center justify-center font-bold overflow-hidden shadow-md">
+      {/* টপ হেডার (মোবাইল ব্যাক বাটন সহ) */}
+      <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 bg-[#1C2541]/95 backdrop-blur-md border-b border-blue-900/50 shadow-lg flex-shrink-0 z-20">
+        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+          {/* মোবাইল ব্যাক বাটন */}
+          {onBack && (
+            <button 
+              onClick={onBack}
+              className=" p-2 -ml-1 text-cyan-300 hover:bg-[#0B132B] rounded-full transition cursor-pointer flex-shrink-0"
+              aria-label="Back to chats"
+            >
+              <FiArrowLeft className="w-5 h-5" />
+            </button>
+          )}
+
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] text-white flex items-center justify-center font-bold overflow-hidden shadow-md flex-shrink-0">
             {displayUser.profilePic ? (
               <img src={displayUser.profilePic} alt={displayUser.name} className="w-full h-full object-cover" />
             ) : (
               <span>{displayUser.name?.charAt(0).toUpperCase()}</span>
             )}
           </div>
-          <div>
-            <h3 className="text-sm font-black text-white">{displayUser.name || chat.chatName}</h3>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-xs sm:text-sm font-black text-white truncate">{displayUser.name || chat.chatName}</h3>
             <p className="text-[10px] text-cyan-300 font-semibold flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${isTyping ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`}></span>
-              {isTyping ? 'Typing...' : 'Active Now'}
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isTyping ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`}></span>
+              <span className="truncate">{isTyping ? 'Typing...' : 'Active Now'}</span>
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3 text-cyan-300">
+        <div className="flex items-center space-x-1 sm:space-x-3 text-cyan-300 flex-shrink-0">
           <button className="p-2 hover:bg-[#0B132B] rounded-full transition cursor-pointer"><FiPhone className="w-4 h-4" /></button>
           <button className="p-2 hover:bg-[#0B132B] rounded-full transition cursor-pointer"><FiVideo className="w-4 h-4" /></button>
           <button 
@@ -335,13 +331,17 @@ export default function ChatBox({ chat }) {
       </div>
 
       {/* মেসেজ বডি */}
-      <div className="flex-1 p-5 overflow-y-auto space-y-4 custom-scrollbar">
+      <div className="flex-1 px-3 sm:p-5 py-4 overflow-y-auto space-y-4 custom-scrollbar">
         <div className="text-center my-4">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] text-white flex items-center justify-center mx-auto mb-2 text-2xl font-bold shadow-lg">
-            {displayUser.name?.charAt(0).toUpperCase()}
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-[#0084FF] to-[#00C6FF] text-white flex items-center justify-center mx-auto mb-2 text-xl sm:text-2xl font-bold shadow-lg overflow-hidden">
+            {displayUser.profilePic ? (
+              <img src={displayUser.profilePic} alt={displayUser.name} className="w-full h-full object-cover" />
+            ) : (
+              <span>{displayUser.name?.charAt(0).toUpperCase()}</span>
+            )}
           </div>
-          <h4 className="text-sm font-bold text-white">{displayUser.name || chat.chatName}</h4>
-          <p className="text-xs text-cyan-300/70">You're connected on Messenger.</p>
+          <h4 className="text-xs sm:text-sm font-bold text-white">{displayUser.name || chat.chatName}</h4>
+          <p className="text-[11px] sm:text-xs text-cyan-300/70">You're connected on Messenger.</p>
         </div>
 
         {messages.map((msg, index) => {
@@ -352,10 +352,10 @@ export default function ChatBox({ chat }) {
 
           return (
             <div key={msg._id || index} ref={scrollRef} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-              <div className={`flex items-center gap-2 group relative ${isMe ? 'justify-end' : 'justify-start'}`}>
+              <div className={`flex items-center gap-1.5 sm:gap-2 group relative max-w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
                 
                 {!isMe && (
-                  <div className="relative">
+                  <div className="relative flex-shrink-0">
                     <button 
                       onClick={() => setActiveMenuId(activeMenuId === msg._id ? null : msg._id)}
                       className="p-1 text-cyan-300/70 hover:bg-[#1C2541] rounded-full transition cursor-pointer"
@@ -391,7 +391,7 @@ export default function ChatBox({ chat }) {
                   </div>
                 )}
 
-                <div className={`relative max-w-xs lg:max-w-md px-4 py-2.5 rounded-2xl text-xs font-medium ${isDeleted ? 'bg-[#1C2541] text-slate-400 italic border border-blue-900/40' : isMe ? 'bg-gradient-to-r from-[#0084FF] to-[#00C6FF] text-white rounded-br-none shadow-md' : 'bg-[#1C2541] text-slate-100 border border-blue-500/30 rounded-bl-none shadow-inner'}`}>
+                <div className={`relative max-w-[78vw] sm:max-w-xs lg:max-w-md px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-xs font-medium break-words ${isDeleted ? 'bg-[#1C2541] text-slate-400 italic border border-blue-900/40' : isMe ? 'bg-gradient-to-r from-[#0084FF] to-[#00C6FF] text-white rounded-br-none shadow-md' : 'bg-[#1C2541] text-slate-100 border border-blue-500/30 rounded-bl-none shadow-inner'}`}>
                   {msg.replyTo && !isDeleted && (
                     <div className={`mb-1 p-1.5 rounded-xl text-[10px] border-l-2 ${isMe ? 'bg-blue-900/50 border-cyan-300 text-cyan-100' : 'bg-[#0B132B]/60 border-[#00C6FF] text-slate-300'}`}>
                       <p className="font-bold">{msg.replyTo.sender?.name || 'User'}</p>
@@ -415,7 +415,7 @@ export default function ChatBox({ chat }) {
                     </div>
                   )}
 
-                  <p className="leading-relaxed">{msg.text}</p>
+                  <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
 
                   {msg.reactions && msg.reactions.length > 0 && !isDeleted && (
                     <div className="absolute -bottom-2.5 right-2 bg-[#1C2541] border border-blue-500/30 shadow-md rounded-full px-1.5 py-0.5 flex items-center space-x-1 text-[10px]">
@@ -431,7 +431,7 @@ export default function ChatBox({ chat }) {
                 </div>
 
                 {isMe && (
-                  <div className="relative">
+                  <div className="relative flex-shrink-0">
                     <button 
                       onClick={() => setActiveMenuId(activeMenuId === msg._id ? null : msg._id)}
                       className="p-1 text-cyan-300/70 hover:bg-[#1C2541] rounded-full transition cursor-pointer"
@@ -493,11 +493,11 @@ export default function ChatBox({ chat }) {
 
       {/* রিপ্লাই বার */}
       {replyingTo && (
-        <div className="px-4 py-2 bg-[#1C2541] flex items-center justify-between border-t border-blue-900/50 text-xs text-cyan-200">
-          <div>
+        <div className="px-3 sm:px-4 py-2 bg-[#1C2541] flex items-center justify-between border-t border-blue-900/50 text-xs text-cyan-200 flex-shrink-0">
+          <div className="truncate pr-2">
             <span className="font-bold text-[#00C6FF]">Replying to {replyingTo.sender?.name}:</span> {replyingTo.text || '[Attachment]'}
           </div>
-          <button onClick={() => setReplyingTo(null)} className="text-slate-400 hover:text-red-400 cursor-pointer">
+          <button onClick={() => setReplyingTo(null)} className="text-slate-400 hover:text-red-400 cursor-pointer flex-shrink-0">
             <FiX className="w-4 h-4" />
           </button>
         </div>
@@ -505,7 +505,7 @@ export default function ChatBox({ chat }) {
 
       {/* ফাইল সিলেক্ট প্রিভিউ বার */}
       {selectedFiles.length > 0 && (
-        <div className="px-4 py-2 bg-[#1C2541] flex items-center justify-between border-t border-blue-900/50">
+        <div className="px-3 sm:px-4 py-2 bg-[#1C2541] flex items-center justify-between border-t border-blue-900/50 flex-shrink-0">
           <span className="text-xs text-cyan-200 font-semibold">{selectedFiles.length} file(s) selected</span>
           <button type="button" onClick={() => setSelectedFiles([])} className="text-red-400 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer">
             <FiX className="w-4 h-4" /> Cancel
@@ -513,9 +513,9 @@ export default function ChatBox({ chat }) {
         </div>
       )}
 
-      {/* ব্লক স্ট্যাটাস অনুযায়ী ইনপুট বা ইনফো বার */}
+      {/* ব্লক স্ট্যাটাস অনুযায়ী ইনপুট বা ইনফো বার */}
       {isBlockedByMe ? (
-        <div className="p-4 bg-[#1C2541] border-t border-blue-900/50 text-center flex flex-col items-center justify-center space-y-2">
+        <div className="p-3 sm:p-4 bg-[#1C2541] border-t border-blue-900/50 text-center flex flex-col items-center justify-center space-y-2 flex-shrink-0">
           <p className="text-xs text-slate-300">You blocked this user. You can't send or receive messages.</p>
           <div className="w-44">
             <BlockButton 
@@ -531,12 +531,12 @@ export default function ChatBox({ chat }) {
           </div>
         </div>
       ) : isBlockedByThem ? (
-        <div className="p-4 bg-[#1C2541] border-t border-blue-900/50 text-center">
+        <div className="p-3 sm:p-4 bg-[#1C2541] border-t border-blue-900/50 text-center flex-shrink-0">
           <p className="text-xs text-slate-400">This person is unavailable on Messenger.</p>
         </div>
       ) : (
-        /* ইনপুট ফর্ম */
-        <form onSubmit={handleSendMessage} className="px-4 py-3 bg-[#1C2541]/90 backdrop-blur-md border-t border-blue-900/50 flex items-center space-x-2 relative">
+        /* ইনপুট ফর্ম (মোবাইল অপ্টিমাইজড) */
+        <form onSubmit={handleSendMessage} className="px-2.5 sm:px-4 py-2.5 sm:py-3 bg-[#1C2541]/95 backdrop-blur-md border-t border-blue-900/50 flex items-center space-x-1.5 sm:space-x-2 relative flex-shrink-0">
           <input 
             type="file" 
             multiple 
@@ -546,18 +546,18 @@ export default function ChatBox({ chat }) {
             accept="image/*,video/*,.pdf,.doc,.docx"
           />
 
-          <button type="button" onClick={() => fileInputRef.current.click()} className="p-2 text-[#00C6FF] hover:bg-[#0B132B] rounded-full transition cursor-pointer">
+          <button type="button" onClick={() => fileInputRef.current.click()} className="p-2 text-[#00C6FF] hover:bg-[#0B132B] rounded-full transition cursor-pointer flex-shrink-0">
             <FiImage className="w-5 h-5" />
           </button>
 
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-[#00C6FF] hover:bg-[#0B132B] rounded-full transition cursor-pointer">
               <FiSmile className="w-5 h-5" />
             </button>
 
             {showEmojiPicker && (
-              <div className="absolute bottom-12 left-0 z-50">
-                <Picker onEmojiClick={onEmojiClick} />
+              <div className="fixed sm:absolute bottom-16 sm:bottom-12 left-2 right-2 sm:left-0 sm:right-auto z-50 flex justify-center sm:block">
+                <Picker onEmojiClick={onEmojiClick} width="100%" height={350} />
               </div>
             )}
           </div>
@@ -567,10 +567,10 @@ export default function ChatBox({ chat }) {
             placeholder="Aa" 
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            className="flex-1 bg-[#0B132B] border border-blue-900/60 focus:border-[#00C6FF] focus:bg-[#0B132B] px-4 py-2.5 rounded-full text-xs text-white focus:outline-none transition shadow-inner"
+            className="flex-1 min-w-0 bg-[#0B132B] border border-blue-900/60 focus:border-[#00C6FF] focus:bg-[#0B132B] px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs text-white focus:outline-none transition shadow-inner"
           />
 
-          <button type="submit" className="p-2.5 bg-gradient-to-r from-[#0084FF] to-[#00C6FF] hover:opacity-90 text-white rounded-full transition shadow-lg cursor-pointer">
+          <button type="submit" className="p-2.5 bg-gradient-to-r from-[#0084FF] to-[#00C6FF] hover:opacity-90 text-white rounded-full transition shadow-lg cursor-pointer flex-shrink-0">
             <FiSend className="w-4 h-4" />
           </button>
         </form>
